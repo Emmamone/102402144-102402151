@@ -1,90 +1,64 @@
 /* 搜索结果页。
  *
- * 阶段 0 的机械拆分：内容逐字取自本页原先的内联 <script>，**未改变任何行为**。
- * 原先各页重复定义的 shared 部分已移入 common.js（实现逐字相同）：
- *   TAB_ON / TAB_OFF / setTabClass / escapeHtml
+ * 数据来自 **GET /api/items/search**（阶段 3 改造完成）：关键词匹配与类型筛选都由
+ * 服务端完成，结果顺序也是服务端排好的（演示数据为 1、7、5、3、2、4、6、8，
+ * 用户新发布的排在最前）。本页只负责渲染，不再遍历 DOM 做匹配。
  *
- * 本页仍使用 localStorage（campusResolved / campusNewItem），并仍从 DOM 的
- * data-keywords / data-result 做前端筛选 —— 这两件事留待阶段 3 改造为接口调用。
+ * 随改造删除的旧机制（阶段 0 曾原样保留）：
+ *   - runSearch 里对每张卡片 data-keywords 的前端子串匹配
+ *   - insertLocalPost：把本机发布的那条插到结果顶部
+ *   - getResolvedIds / applyResolved：已解决状态改由服务端的 status 字段给出
+ *
+ * 注意本页**没有提示条元素**（`#toast` 只存在于首页/详情页/发布页），所以
+ * showToast 在这里是空操作，请求失败只会在控制台留痕——这是既有设计的取舍，
+ * 见 docs/system-design.md 第 7.2 节。
  */
 
 var currentType = 'all';
 
 /**
- * 读出本机标记为已解决的物品 id 列表。
- *
- * @returns {Array<string>} id 数组；localStorage 不可用或内容损坏时返回空数组
- *
- * 这是阶段 0 保留的旧机制，只影响本机显示。阶段 3 起状态由服务端 status 字段
- * 决定，届时本函数与 applyResolved 一并删除。
- */
-function getResolvedIds() {
-  try {
-    return JSON.parse(localStorage.getItem('campusResolved') || '[]');
-  } catch (err) {
-    return [];
-  }
-}
-
-/**
- * 把本机标记过已解决的那些卡片，状态徽标改成灰色「已解决」。
+ * 按当前关键词与类型重新搜索并渲染。
  *
  * @returns {void}
  *
- * 只改徽标的文字与类名，不动卡片的其它部分（所以被本机标记的卡片不会有
- * 服务端数据里那种整体弱化效果）。阶段 3 起由服务端 status 决定，本函数删除。
+ * 关键词取输入框的当前值（空串表示不按关键词过滤），类型取 currentType，
+ * 两者都作为查询参数发给服务端，前端不做任何过滤或排序。
+ *
+ * 失败时只往控制台打日志：本页没有提示条，也不新增错误 UI。
  */
-function applyResolved() {
-  getResolvedIds().forEach(function (id) {
-    var card = document.querySelector('[data-id="' + id + '"]');
-    if (!card) { return; }
-    var badge = card.querySelector('[data-status]');
-    if (!badge) { return; }
-    badge.textContent = '已解决';
-    badge.className = 'ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500';
-  });
-}
-
-/* 把本机刚发布的那条插到结果最上面（阶段 0 原样保留；阶段 3 起由服务端返回，届时整个函数删除） */
-function insertLocalPost() {
-  var item;
-  try { item = JSON.parse(localStorage.getItem('campusNewItem') || 'null'); } catch (err) { item = null; }
-  if (!item || !item.name) { return; }
-  var isSeek = item.type === 'seek';
-  var type = isSeek ? 'seek' : 'find';
-  var typeName = isSeek ? '寻物' : '招领';
-  var tagClass = isSeek ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600';
-  var statusText = isSeek ? '寻找中' : '待认领';
-  var statusClass = isSeek ? 'bg-orange-50 text-orange-600' : 'bg-amber-50 text-amber-600';
-  var card = document.createElement('a');
-  card.className = 'rounded-2xl bg-white p-4 border border-blue-100 shadow-sm transition active:scale-[0.99]';
-  card.setAttribute('data-id', 'new');
-  card.setAttribute('data-result', type);
-  card.setAttribute('data-keywords', [item.name, item.category, item.place, item.desc, typeName].join(' '));
-  card.href = 'detail.html?id=new';
-  card.innerHTML = '<div class="flex items-start gap-3"><div class="w-11 h-11 shrink-0 rounded-xl ' + (isSeek ? 'bg-blue-50' : 'bg-emerald-50') + ' flex items-center justify-center"><iconify-icon class="text-[22px] ' + (isSeek ? 'text-blue-600' : 'text-emerald-600') + '" icon="' + (isSeek ? 'mdi:help-circle-outline' : 'mdi:hand-heart-outline') + '"></iconify-icon></div><div class="min-w-0 flex-1"><div class="flex items-center gap-1.5"><h3 class="min-w-0 text-[15px] font-semibold text-slate-800 truncate">' + escapeHtml(item.name) + '</h3><span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ' + tagClass + '">' + typeName + '</span><span class="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ' + statusClass + '" data-status="">' + statusText + '</span></div><div class="mt-1.5 flex items-center gap-3 text-[11px] text-slate-400"><span>' + escapeHtml((item.time || '').slice(0, 16) || '刚刚') + '</span><span class="truncate">' + escapeHtml(item.place) + '</span></div><p class="mt-1.5 text-[12px] leading-relaxed text-slate-500 line-clamp-2">' + escapeHtml(item.desc) + '</p></div></div>';
-  document.querySelector('#resultList .flex.flex-col').insertBefore(card, document.querySelector('#resultList .flex.flex-col').firstChild);
-}
-
-/* 前端筛选：对每张卡片的 data-keywords 做子串匹配，再按 data-result 过滤类型（阶段 3 起改为请求后端） */
 function runSearch() {
   var kw = document.getElementById('kw').value.trim();
-  var key = kw.toLowerCase();
-  var count = 0;
+  API.search(kw, currentType)
+    .then(function (payload) {
+      renderResults(kw, payload);
+    })
+    .catch(function (error) {
+      console.error(error);
+      showToast('加载失败，请稍后重试');
+    });
+}
 
-  document.querySelectorAll('[data-result]').forEach(function (card) {
-    var text = (card.getAttribute('data-keywords') || '').toLowerCase();
-    var nameMatch = !key || text.indexOf(key) !== -1;
-    var typeMatch = (currentType === 'all') || (card.getAttribute('data-result') === currentType);
-    var show = nameMatch && typeMatch;
-    card.classList.toggle('hidden', !show);
-    if (show) { count++; }
-  });
-
-  document.getElementById('resultCount').textContent = count;
+/**
+ * 把搜索结果渲染进列表，并更新条数、关键词回显与空状态。
+ *
+ * @param {string} kw 当前关键词，用于回显；空串时回显「全部物品」
+ * @param {{count: number, items: Array}} payload GET /api/items/search 的响应
+ * @returns {void}
+ *
+ * 条数取服务端返回的 count，而不是数一数渲染了几张卡片。
+ * 卡片用 renderCard(item, 'search') 生成——它会带上 data-result 与 data-keywords，
+ * 主题 CSS 靠 `#resultList [data-result]` 选中卡片，漏掉属性会静默丢掉左侧金线。
+ */
+function renderResults(kw, payload) {
+  document.getElementById('resultItems').innerHTML = payload.items
+    .map(function (item) {
+      return renderCard(item, 'search');
+    })
+    .join('');
+  document.getElementById('resultCount').textContent = payload.count;
   document.getElementById('kwEcho').textContent = kw || '全部物品';
-  document.getElementById('resultList').classList.toggle('hidden', count === 0);
-  document.getElementById('emptyState').classList.toggle('hidden', count > 0);
+  document.getElementById('resultList').classList.toggle('hidden', payload.count === 0);
+  document.getElementById('emptyState').classList.toggle('hidden', payload.count > 0);
 }
 
 /**
@@ -93,8 +67,8 @@ function runSearch() {
  * @param {string} type 'all' / 'seek' / 'find'
  * @returns {void}
  *
- * 与首页不同，这里不重新请求后端（搜索页仍是阶段 0 的实现），
- * 只是改 currentType 后重跑一次前端筛选。阶段 3 起改为请求接口。
+ * 只更新 currentType 与标签选中态，随后重新请求后端——类型过滤在服务端做，
+ * 不是把已渲染的卡片藏起来。
  */
 function setFilter(type) {
   currentType = type;
@@ -140,7 +114,5 @@ window.addEventListener('DOMContentLoaded', function () {
   var params = new URLSearchParams(window.location.search);
   var q = params.get('q');
   if (q) { document.getElementById('kw').value = q; }
-  insertLocalPost();
-  applyResolved();
   setFilter('all');
 });

@@ -25,13 +25,15 @@
 
 ### 1.1 当前实现进度
 
-**阶段 0、1、2 已完成**——阶段 2 的三个读接口全部实现；阶段 3 只做了首页那一个页面：
+**阶段 0、1、2、3 已完成**——三个读接口全部实现，首页 / 详情页 / 搜索页三个页面的读改造也已落地；阶段 4（写路径）尚未开始：
 
 | 部分 | 状态 |
 | --- | --- |
 | `frontend/` 5 个页面 + `css/visual-theme.css` + 7 个 js | **结构已就位**：一页一 html、一页一 js、主题单份；HTML 中无内联 `<style>` 与内联脚本 |
 | `index.html` + `js/index.js` | **已实现**：列表由 `GET /api/items/home` 驱动 |
-| `search.html` · `detail.html` · `publish.html` · `success.html` 及其 js | **阶段 0 拆分已完成**（内容逐字迁入、共用代码提取到 `common.js`、行内脚本外置），**逻辑仍沿用原实现**（内嵌数据 + localStorage + `?id=new`）；改造为接口调用待阶段 3 / 4 |
+| `detail.html` + `js/detail.js` | **已实现**：数据来自 `GET /api/items/{id}`（阶段 3）。内嵌的 8 条演示数据已删除，编号由服务端给出；404 时回落取 1 号。**唯一还读 localStorage 的是 `?id=new` 分支**（本机发布流程的过渡，阶段 4 随发布改造一并删除） |
+| `search.html` + `js/search.js` | **已实现**：数据来自 `GET /api/items/search`（阶段 3）。8 张硬编码卡片、前端关键词匹配、`insertLocalPost`、`applyResolved` 全部删除；卡片改由 `renderCard(item, 'search')` 渲染，条数与空状态由服务端 `count` 决定 |
+| `publish.html` · `success.html` 及其 js | **阶段 0 拆分已完成**（内容逐字迁入、共用代码提取到 `common.js`、行内脚本外置），**逻辑仍沿用原实现**（用 localStorage 暂存刚发布的那条）；改造在阶段 4 |
 | 后端 `db.py` / `schemas.py` / `serialize.py` / `seed.py` / `main.py` | **已实现**：建表、播种、序列化、首页接口 |
 | `GET /api/items/home`、`GET /api/items/search`、`GET /api/items/{id}` | **已实现**：三个读接口全部可用 |
 | `POST /api/items`、`POST /api/items/{id}/resolve` | **占位**：路径与响应形状已按设计固定，返回 501 + `{"code":"not_implemented","message":...}` |
@@ -122,7 +124,8 @@ campus-lost-found/
 │   │   ├── test_placeholders.py     写接口占位返回 501、旧地址跳转、静态页可达
 │   │   └── test_items_write.py      发布、标记已解决（阶段 4）
 │   └── contract/
-│       └── test_api_contract.py     接口字段与前端渲染的契约
+│       ├── test_api_contract.py     接口字段与前端渲染的契约
+│       └── test_frontend_wiring.py  前端静态检查（内联块 / 资源存在 / 迁移进度）
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                   持续集成：风格检查 + 三层测试
