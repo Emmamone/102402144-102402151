@@ -1,12 +1,42 @@
-/* 发布成功页 —— 占位，尚未实现。
+/* 发布成功页。
  *
- * 待实现内容（见 docs/system-design.md 第 7.2 节与 docs/development-plan.md 阶段 4）：
- *   - fillSummary()：读 ?id → API.detail(id) 渲染 #sName #sType #sTimeLabel
- *                    #sTime #sPlace #sContact（用服务端返回的 masked）#sPublish
- *   - 无 ?id 或请求失败时，沿用现有的固定兜底摘要，保证直接打开该页不空白
- *   - 「查看详情」链接改为动态指向 detail.html?id=<真实id>（复用 common.js 的 maskContact 仅用于兜底摘要）
+ * 阶段 0 的机械拆分：内容逐字取自本页原先的内联 <script>，**未改变任何行为**。
+ * maskContact 已移入 common.js（实现逐字相同）。
  *
- * 不复刻的旧行为：从 localStorage 读 campusNewItem；固定写死的 detail.html?id=new。
- *
- * 依赖的接口：GET /api/items/{id}（当前返回 501）
+ * 本页仍从 localStorage 的 campusNewItem 读数据、并保留写死的兜底摘要 ——
+ * 留待阶段 4 改造为按 ?id 向服务端查询。
  */
+
+function fillSummary() {
+  var saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem('campusNewItem') || 'null');
+  } catch (err) {
+    saved = null;
+  }
+
+  var item = saved || {
+    name: '校园卡',
+    type: 'seek',
+    time: '2026-09-27 08:20',
+    place: '图书馆二楼自习区',
+    contact: '13800001234',
+    publish: '2026-09-27 08:26'
+  };
+
+  var isSeek = (item.type === 'seek');
+
+  document.getElementById('sName').textContent = item.name || '未命名物品';
+  var tag = document.getElementById('sType');
+  tag.textContent = isSeek ? '寻物' : '招领';
+  tag.className = 'shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ' +
+    (isSeek ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600');
+
+  document.getElementById('sTimeLabel').textContent = isSeek ? '丢失时间' : '拾取时间';
+  document.getElementById('sTime').textContent = item.time || '—';
+  document.getElementById('sPlace').textContent = item.place || '—';
+  document.getElementById('sContact').textContent = maskContact(item.contact);
+  document.getElementById('sPublish').textContent = item.publish || '刚刚';
+}
+
+window.addEventListener('DOMContentLoaded', fillSummary);

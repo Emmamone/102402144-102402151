@@ -25,18 +25,21 @@
 
 ### 1.1 当前实现进度
 
-本轮只落地了**首页**这条纵切（对应《开发计划》阶段 0 的部分内容 + 阶段 1 + 阶段 2 的首页部分）：
+**阶段 0（机械重构）已完成**，阶段 1 与阶段 2 的首页部分已落地：
 
 | 部分 | 状态 |
 | --- | --- |
-| `frontend/index.html` + `js/api.js` + `js/common.js` + `js/index.js` + `css/visual-theme.css` | **已实现**：首页列表由 `GET /api/items/home` 驱动 |
-| `frontend/search.html` · `detail.html` · `publish.html` · `success.html` 及其 js | **占位**：结构与脚本引用已就位，页面内写明"尚未实现"，逻辑留空 |
+| `frontend/` 5 个页面 + `css/visual-theme.css` + 7 个 js | **结构已就位**：一页一 html、一页一 js、主题单份；HTML 中无内联 `<style>` 与内联脚本 |
+| `index.html` + `js/index.js` | **已实现**：列表由 `GET /api/items/home` 驱动 |
+| `search.html` · `detail.html` · `publish.html` · `success.html` 及其 js | **阶段 0 拆分已完成**（内容逐字迁入、共用代码提取到 `common.js`、行内脚本外置），**逻辑仍沿用原实现**（内嵌数据 + localStorage + `?id=new`）；改造为接口调用待阶段 3 / 4 |
 | 后端 `db.py` / `schemas.py` / `serialize.py` / `seed.py` / `main.py` | **已实现**：建表、播种、序列化、首页接口 |
 | `GET /api/items/home` | **已实现** |
 | `GET /api/items/search`、`GET /api/items/{id}`、`POST /api/items`、`POST /api/items/{id}/resolve` | **占位**：路径与响应形状已按设计固定，返回 501 + `{"code":"not_implemented","message":...}` |
 | `tests/unit` · `tests/integration` · `tests/contract` | **已实现**，三层齐备 |
 
-**尚未处理的遗留项**：仓库根目录仍保留着改造前的 4 个页面源文件（`search.html`、`detail.html`、`publish.html`、`success.html`）与 `home.html`。它们是**未纳入版本控制的原始素材**，内容尚未迁入 `frontend/` 下的占位页；在对应页面实现完成之前不要删除，否则那 4 个页面的原始文案与结构会永久丢失。
+改造前的 5 个页面源文件已全部迁入 `frontend/` 并删除，不再有"内容只存在于未跟踪文件里"的风险。
+
+> **一处刻意的行为保留**：发布页的提示条原本是 2000ms，其余页是 1800ms。提取共用 `showToast` 时用一个可选时长参数保留了这一差异，避免"整理代码顺手改了行为"。
 
 ## 2. 总体架构
 
@@ -497,6 +500,10 @@ detail.html      detail.js          FastAPI             SQLite
 - 脚本标签位于 `</body>` 之前，与原内联脚本位置等价，DOM 此时已就绪。
 
 ### 7.2 逐页改造
+
+> **阅读提示**：阶段 0 的机械拆分**已经完成**——四页的"删除内联 `<style>` / 删除整块内联 `<script>` / 提取共用代码"这几行现在都已是既成事实。下表保留它们是为了说明最终形态，**剩下要做的是逻辑替换**（把内嵌数据、localStorage、`?id=new` 换成接口调用），不是再次做结构拆分。
+
+
 
 #### 首页 `index.html`（原 `home.html`）
 

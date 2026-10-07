@@ -4,23 +4,82 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>校园失物招领 · 发布结果</title>
+<title>校园失物招领 · 发布成功</title>
 <script src="https://modao.cc/agent-py/static/source/js/tailwindcss.js"></script>
 <script src="https://modao.cc/agent-py/static/source/js/iconify-icon.min.js"></script>
 <link rel="stylesheet" href="css/visual-theme.css"/>
 </head>
 <body class="w-full h-full m-0 overflow-hidden flex items-center justify-center bg-slate-100 text-slate-800 antialiased">
 <div id="phone-canvas" class="w-full h-full max-w-[393px] max-h-[852px] bg-[#f5f7fb] flex flex-col overflow-hidden relative">
-<!-- 占位页：摘要结构待实现。数据来自 GET /api/items/{id}（?id=），失败时用固定兜底摘要。 -->
-<header class="shrink-0 bg-white border-b border-slate-100 px-3 pt-4 pb-3 flex items-center gap-2">
+<header class="shrink-0 h-14 px-3 flex items-center gap-1 bg-white border-b border-slate-100">
 <a class="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-slate-500 active:bg-slate-100" href="index.html">
-<iconify-icon class="text-[20px]" icon="mdi:close"></iconify-icon>
+<iconify-icon class="text-[22px]" icon="mdi:close"></iconify-icon>
 </a>
 <h1 class="text-[16px] font-semibold text-slate-800">发布结果</h1>
 </header>
-<div class="flex-1 min-h-0 flex items-center justify-center px-6">
-<p class="text-center text-[13px] leading-relaxed text-slate-400">本页面尚未实现<br/>接口已保留：GET /api/items/{id}<br/>实现顺序见 docs/development-plan.md 阶段 4</p>
+<div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
+<div class="flex flex-col min-h-full px-6 pt-10 pb-6">
+<div class="flex flex-col items-center text-center">
+<div class="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center">
+<iconify-icon class="text-[46px] text-emerald-500" icon="mdi:check-circle-outline"></iconify-icon>
 </div>
+<h1 class="mt-5 text-[20px] font-bold text-slate-800">信息已发布</h1>
+<p class="mt-2 text-[13px] leading-relaxed text-slate-500">
+            你的信息已经出现在「最新信息」列表中，<br/>如果有线索，同学会通过联系方式找到你。
+          </p>
+</div>
+<!-- 信息摘要 -->
+<div class="mt-7 bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+<p class="text-[12px] text-slate-400">信息摘要</p>
+<div class="mt-3 flex items-center gap-2">
+<h2 class="min-w-0 text-[15px] font-semibold text-slate-800 truncate" id="sName">校园卡</h2>
+<span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600" id="sType">寻物</span>
+</div>
+<div class="mt-3 border-t border-slate-50 pt-1">
+<div class="flex items-center py-2">
+<span class="w-[76px] shrink-0 text-[12px] text-slate-400" id="sTimeLabel">丢失时间</span>
+<span class="min-w-0 text-[12px] font-medium text-slate-700 truncate" id="sTime">—</span>
+</div>
+<div class="flex items-center py-2">
+<span class="w-[76px] shrink-0 text-[12px] text-slate-400">地点</span>
+<span class="min-w-0 text-[12px] font-medium text-slate-700 truncate" id="sPlace">—</span>
+</div>
+<div class="flex items-center py-2">
+<span class="w-[76px] shrink-0 text-[12px] text-slate-400">联系方式</span>
+<span class="min-w-0 text-[12px] font-medium text-slate-700 truncate" id="sContact">—</span>
+</div>
+<div class="flex items-center py-2">
+<span class="w-[76px] shrink-0 text-[12px] text-slate-400">发布时间</span>
+<span class="min-w-0 text-[12px] font-medium text-slate-700 truncate" id="sPublish">—</span>
+</div>
+</div>
+</div>
+<!-- 后续提示 -->
+<div class="mt-4 rounded-2xl bg-blue-50 p-4">
+<p class="flex items-center gap-1.5 text-[12px] font-semibold text-blue-700">
+<iconify-icon class="text-[16px]" icon="mdi:lightbulb-on-outline"></iconify-icon>发布后可以做什么
+          </p>
+<ul class="mt-2 space-y-1.5 text-[12px] leading-relaxed text-blue-600">
+<li class="flex items-start gap-1.5">
+<iconify-icon class="text-[14px] mt-[2px] shrink-0" icon="mdi:check"></iconify-icon>物品找回或归还后，在详情页标记为「已解决」
+            </li>
+<li class="flex items-start gap-1.5">
+<iconify-icon class="text-[14px] mt-[1px] shrink-0" icon="mdi:check"></iconify-icon>接到线索时先核对物品特征，避免误领
+            </li>
+</ul>
+</div>
+<div class="mt-6 flex flex-col gap-3">
+<a class="flex items-center justify-center gap-1.5 w-full h-12 rounded-2xl bg-blue-600 text-white text-[15px] font-semibold shadow-lg shadow-blue-600/20 active:bg-blue-700" href="detail.html?id=new">
+<iconify-icon class="text-[19px]" icon="mdi:file-document-outline"></iconify-icon>查看详情
+          </a>
+<a class="flex items-center justify-center gap-1.5 w-full h-12 rounded-2xl border border-slate-200 bg-white text-[15px] font-medium text-slate-600 active:bg-slate-50" href="index.html">
+<iconify-icon class="text-[19px]" icon="mdi:home-outline"></iconify-icon>返回首页
+          </a>
+</div>
+<p class="mt-auto pt-6 text-center text-[11px] text-slate-400">校园失物招领 · 让物品回到主人身边</p>
+</div>
+</div>
+<!-- 动态样式占位（供脚本切换类型标签配色使用） -->
 <div class="hidden bg-emerald-50 text-emerald-600 bg-blue-50 text-blue-600"></div>
 </div>
 <script src="js/api.js"></script>

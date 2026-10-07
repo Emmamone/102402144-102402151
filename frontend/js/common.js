@@ -26,13 +26,17 @@ function setTabClass(btn, on) {
   TAB_OFF.forEach(function (c) { btn.classList.toggle(c, !on); });
 }
 
-function showToast(msg) {
+/**
+ * 提示条。duration 可省略，默认 1800ms。
+ * 发布页的提示原本是 2000ms，为避免"提取共用代码顺手改了行为"，用参数保留差异。
+ */
+function showToast(msg, duration) {
   var toast = document.getElementById('toast');
   if (!toast) { return; }
   toast.textContent = msg;
   toast.classList.remove('hidden');
   if (toastTimer) { clearTimeout(toastTimer); }
-  toastTimer = setTimeout(function () { toast.classList.add('hidden'); }, 1800);
+  toastTimer = setTimeout(function () { toast.classList.add('hidden'); }, duration || 1800);
 }
 
 function escapeHtml(value) {
