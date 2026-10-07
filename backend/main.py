@@ -13,7 +13,9 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -23,7 +25,36 @@ from fastapi.staticfiles import StaticFiles
 
 from . import db, schemas, serialize
 
-FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+
+def _frontend_dir() -> Path:
+    """前端静态文件所在目录，按顺序取第一个存在的。
+
+    1. 环境变量 ``CLF_FRONTEND_DIR`` —— 临时指到别处调试用
+    2. **exe 同级的 ``frontend/``** —— 打包后优先用这一份。于是改页面、样式、
+       脚本只需要替换这个文件夹，**不用重新打包 exe**（前端资源与后端代码解耦）
+    3. 包内的 ``frontend/``（``sys._MEIPASS``）—— 上一份不存在时的兜底，
+       保证把 exe 单独拷到别的机器上仍然能跑
+    4. 开发时：仓库根目录的 ``frontend/``
+
+    为什么显式判断而不是直接靠 ``__file__`` 往上推：后者在冻结环境里的取值依赖
+    PyInstaller 的内部约定，而且**两种**位置（外部目录 / 包内解压目录）都有可能，
+    写清楚以后别人才敢动。启动时会把最终生效的是哪一份打出来。
+    """
+    env_dir = os.environ.get("CLF_FRONTEND_DIR")
+    if env_dir:
+        return Path(env_dir)
+
+    if getattr(sys, "frozen", False):
+        beside_exe = Path(sys.executable).resolve().parent / "frontend"
+        if beside_exe.is_dir():
+            return beside_exe
+        base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+        return base / "frontend"
+
+    return Path(__file__).resolve().parent.parent / "frontend"
+
+
+FRONTEND_DIR = _frontend_dir()
 
 app = FastAPI(title="校园失物招领 API", version="0.1.0")
 

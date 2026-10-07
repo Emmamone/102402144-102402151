@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from backend import seed
+import sqlite3
+
+import pytest
+
+import backend.__main__ as main_entry
+from backend import db, seed
 
 
 def _rows(conn):
@@ -78,3 +83,51 @@ def test_详情页时间用绝对时间(conn):
 def test_搜索索引逐字保存(conn):
     row = conn.execute("SELECT keywords FROM items WHERE id = 4").fetchone()
     assert row["keywords"] == "耳机 无线耳机 白色 宿舍区 3号楼 寻物 丢了"
+
+
+# --------------------------------------------------------------------------
+# 启动时的自动建库（backend/__main__.py 的 ensure_database）
+# 让双击 exe 的人不必先去跑一遍 seed
+# --------------------------------------------------------------------------
+def _count(path):
+    conn = db.connect(path)
+    try:
+        return conn.execute("SELECT COUNT(*) FROM items").fetchone()[0]
+    finally:
+        conn.close()
+
+
+def test_首次运行会自动建库并写入演示数据(tmp_path):
+    path = tmp_path / "fresh.sqlite3"
+    assert not path.exists()
+
+    assert main_entry.ensure_database(path) is True
+
+    assert _count(path) == 8
+
+
+def test_库里已有数据时什么都不做(tmp_path):
+    path = tmp_path / "fresh.sqlite3"
+    main_entry.ensure_database(path)
+
+    assert main_entry.ensure_database(path) is False
+    assert _count(path) == 8
+
+
+def test_表在但没有数据时会补上(tmp_path):
+    """上次半途中断留下的空壳：只判断"文件在不在"会让用户看到一个空列表。"""
+    path = tmp_path / "empty.sqlite3"
+    db.init_db(path)                       # 建了表，一条数据都没有
+
+    assert main_entry.ensure_database(path) is True
+
+    assert _count(path) == 8
+
+
+def test_数据库文件损坏时抛出明确异常(tmp_path):
+    """不静默删用户的文件——抛出 sqlite3.DatabaseError，由 main() 给出处置提示。"""
+    path = tmp_path / "broken.sqlite3"
+    path.write_text("这不是一个 SQLite 文件", encoding="utf-8")
+
+    with pytest.raises(sqlite3.DatabaseError):
+        main_entry.ensure_database(path)

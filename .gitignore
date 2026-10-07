@@ -15,6 +15,12 @@ __pycache__/
 build/
 dist/
 
+# 打包出的 exe 与 PyInstaller 自动生成的 spec 不入库：
+# 二进制体积大（约 15-25MB）、每次构建的产物都不同，提交进去会让仓库永久变大。
+# 需要时用 build_exe.py 重建即可（构建配置在版本库里）。
+*.exe
+*.spec
+
 # 虚拟环境
 .venv/
 venv/
