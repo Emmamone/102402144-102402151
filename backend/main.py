@@ -53,6 +53,13 @@ def get_conn():
 
 
 def _not_implemented(what: str) -> HTTPException:
+    """构造"尚未实现"的统一错误响应。
+
+    参数：what —— 接口的中文名，用于拼出「XXX 尚未实现」这句提示。
+    返回：一个 501 的 HTTPException，错误体由上面的处理器摊平成 {code, message}。
+    约束：占位接口一律走这里，保证 4 个未实现路由的错误体形状完全一致
+        （tests/integration/test_placeholders.py 会校验 code 为 not_implemented）。
+    """
     return HTTPException(
         status_code=501,
         detail={"code": "not_implemented", "message": "%s 尚未实现" % what},
@@ -92,25 +99,53 @@ def list_home(
 # --------------------------------------------------------------------------
 @app.get("/api/items/search")
 def search_items_placeholder() -> None:
-    """搜索接口占位。规则见 docs/system-design.md 第 5.2 节。"""
+    """搜索接口占位。
+
+    查询参数（待实现）：q —— 关键词，空串表示不过滤；type —— all / seek / find。
+    返回（待实现）：200 + {count, items[]}，按 search_order 排序。
+    当前：抛 501，提示「搜索接口 尚未实现」。前端 search.js 因此仍跑原实现。
+    规则见 docs/system-design.md 第 5.2 节。
+    """
     raise _not_implemented("搜索接口")
 
 
 @app.get("/api/items/{item_id}")
 def get_item_placeholder(item_id: int) -> None:
-    """详情接口占位。见 docs/system-design.md 第 5.3 节。"""
+    """详情接口占位。
+
+    路径参数：item_id —— 物品 id，正整数。
+    返回（待实现）：200 + DetailItem（含 code / publisher / masked / contact 等
+        只在这里才出现的字段）；id 不存在时 404。
+    当前：抛 501。前端 detail.js 因此仍读本页内嵌数据。
+    规则见 docs/system-design.md 第 5.3 节。
+    """
     raise _not_implemented("详情接口")
 
 
 @app.post("/api/items")
 def create_item_placeholder() -> None:
-    """发布接口占位。见 docs/system-design.md 第 5.4 节。"""
+    """发布接口占位。
+
+    请求体（待实现）：CreateRequest —— name / type / category / time / place / desc / contact。
+    返回（待实现）：201 + DetailItem，并在服务端补全状态、图标、发布者、头像、
+        脱敏串、搜索索引与发布时间（前端不提供这些）。
+    当前：抛 501。前端 publish.js 因此仍写 localStorage。
+    规则见 docs/system-design.md 第 5.4 节。
+    """
     raise _not_implemented("发布接口")
 
 
 @app.post("/api/items/{item_id}/resolve")
 def resolve_item_placeholder(item_id: int) -> None:
-    """标记已解决接口占位。见 docs/system-design.md 第 5.5 节。"""
+    """标记已解决接口占位。
+
+    路径参数：item_id —— 物品 id。
+    返回（待实现）：200 + DetailItem（status 变为 resolved）；id 不存在时 404；
+        重复调用**幂等**，不报错。
+    当前：抛 501。前端 detail.js 的 markResolved 因此仍写 localStorage。
+    约束：本接口不做发布者归属校验（与现状一致），且生效范围是全局的。
+    规则见 docs/system-design.md 第 5.5 节。
+    """
     raise _not_implemented("标记已解决接口")
 
 
@@ -119,6 +154,12 @@ def resolve_item_placeholder(item_id: int) -> None:
 # --------------------------------------------------------------------------
 @app.get("/home.html")
 def legacy_home() -> RedirectResponse:
+    """旧地址兼容：首页由 home.html 更名为 index.html 后，把旧链接跳过去。
+
+    返回：302 跳转到 /index.html。
+    约束：必须注册在静态挂载之前，否则会被 StaticFiles 兜底匹配成 404。
+        用 302（临时）而不是 301，避免浏览器把旧地址永久缓存住。
+    """
     return RedirectResponse("/index.html", status_code=302)
 
 

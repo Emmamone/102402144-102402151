@@ -21,6 +21,15 @@ var TYPE_ICON_CLASS = { seek: 'text-blue-600', find: 'text-emerald-600' };
 
 var toastTimer = null;
 
+/**
+ * 切换分类标签的选中态。
+ *
+ * @param {HTMLElement} btn 标签按钮（需带 data-tab）
+ * @param {boolean} on      true 为选中，false 为未选中
+ *
+ * 选中态是两串类名的互换（见 TAB_ON / TAB_OFF），因为配色由主题文件覆盖 Tailwind
+ * 类名实现，直接写死颜色会绕开主题。
+ */
 function setTabClass(btn, on) {
   TAB_ON.forEach(function (c) { btn.classList.toggle(c, on); });
   TAB_OFF.forEach(function (c) { btn.classList.toggle(c, !on); });
@@ -39,6 +48,16 @@ function showToast(msg, duration) {
   toastTimer = setTimeout(function () { toast.classList.add('hidden'); }, duration || 1800);
 }
 
+/**
+ * 转义 HTML 特殊字符，供拼接 innerHTML 时使用。
+ *
+ * @param {*} value 任意值（null / undefined 视为空串）
+ * @returns {string} 转义后的字符串
+ *
+ * 约束：任何来自接口或用户输入的内容写入 innerHTML 前都必须过一遍这个函数，
+ * 否则会有注入风险（见 docs/coding-standards.md 第 5.4 节）。
+ * 能用 textContent 的地方优先用 textContent。
+ */
 function escapeHtml(value) {
   return String(value === null || value === undefined ? '' : value).replace(/[&<>"']/g, function (ch) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];

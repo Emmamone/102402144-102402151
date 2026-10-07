@@ -10,6 +10,14 @@
 
 var currentType = 'all';
 
+/**
+ * 读出本机标记为已解决的物品 id 列表。
+ *
+ * @returns {Array<string>} id 数组；localStorage 不可用或内容损坏时返回空数组
+ *
+ * 这是阶段 0 保留的旧机制，只影响本机显示。阶段 3 起状态由服务端 status 字段
+ * 决定，届时本函数与 applyResolved 一并删除。
+ */
 function getResolvedIds() {
   try {
     return JSON.parse(localStorage.getItem('campusResolved') || '[]');
@@ -18,6 +26,14 @@ function getResolvedIds() {
   }
 }
 
+/**
+ * 把本机标记过已解决的那些卡片，状态徽标改成灰色「已解决」。
+ *
+ * @returns {void}
+ *
+ * 只改徽标的文字与类名，不动卡片的其它部分（所以被本机标记的卡片不会有
+ * 服务端数据里那种整体弱化效果）。阶段 3 起由服务端 status 决定，本函数删除。
+ */
 function applyResolved() {
   getResolvedIds().forEach(function (id) {
     var card = document.querySelector('[data-id="' + id + '"]');
@@ -71,6 +87,15 @@ function runSearch() {
   document.getElementById('emptyState').classList.toggle('hidden', count > 0);
 }
 
+/**
+ * 切换结果页的类型筛选。绑在三个标签按钮的 onclick 上。
+ *
+ * @param {string} type 'all' / 'seek' / 'find'
+ * @returns {void}
+ *
+ * 与首页不同，这里不重新请求后端（搜索页仍是阶段 0 的实现），
+ * 只是改 currentType 后重跑一次前端筛选。阶段 3 起改为请求接口。
+ */
 function setFilter(type) {
   currentType = type;
   document.querySelectorAll('[data-tab]').forEach(function (btn) {
@@ -79,6 +104,15 @@ function setFilter(type) {
   runSearch();
 }
 
+/**
+ * 提交搜索：按当前输入框内容重搜，并把类型重置为「全部」。
+ *
+ * @param {Event} e 表单提交事件（可为 null，quickSearch 会这样调用）
+ * @returns {boolean} 恒为 false，保持行内 onsubmit 的返回值语义
+ *
+ * 重置类型是既有行为：换关键词时先把筛选放回「全部」，避免"上次筛了招领、
+ * 这次搜出来啥也没有"的困惑。
+ */
 function onSubmitSearch(e) {
   if (e) { e.preventDefault(); }
   currentType = 'all';
@@ -89,6 +123,14 @@ function onSubmitSearch(e) {
   return false;
 }
 
+/**
+ * 快捷搜索：无结果时点下方的常见关键词标签。
+ *
+ * @param {string} kw 要填入搜索框的关键词
+ * @returns {void}
+ *
+ * 先把词写进输入框（让用户看得见搜的是什么），再复用提交逻辑重搜。
+ */
 function quickSearch(kw) {
   document.getElementById('kw').value = kw;
   onSubmitSearch(null);

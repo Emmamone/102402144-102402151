@@ -85,6 +85,12 @@ class CreateRequest(BaseModel):
     @field_validator("name", "place", "desc", "contact")
     @classmethod
     def _not_blank(cls, value: str) -> str:
+        """校验文本字段去掉首尾空格后非空，并返回去空格后的值。
+
+        参数：value —— 请求里的原始字符串（可能是 None）。
+        返回：去掉首尾空格的字符串；全为空白时抛 ValueError，由 Pydantic 转成 422。
+        说明：前端已做同样的必填校验，这里只是二次兜底，防绕过前端直接调接口。
+        """
         text = (value or "").strip()
         if not text:
             raise ValueError("不能为空")
@@ -93,6 +99,12 @@ class CreateRequest(BaseModel):
     @field_validator("category")
     @classmethod
     def _known_category(cls, value: str) -> str:
+        """校验类别取值必须是发布页那 7 个标签之一。
+
+        参数：value —— 前端隐藏字段 fCategory 传来的文本（由类别标签的文案决定）。
+        返回：去空格后的类别文本；不在 CATEGORIES 里时抛 ValueError。
+        约束：新增类别要同时改这里的 CATEGORIES 与发布页的标签，否则前端能选、后端会拒。
+        """
         text = (value or "").strip()
         if text not in CATEGORIES:
             raise ValueError("未知的类别")
@@ -101,7 +113,13 @@ class CreateRequest(BaseModel):
     @field_validator("time")
     @classmethod
     def _normalized_time(cls, value: str) -> str:
-        # 浏览器 datetime-local 控件提交的是 'YYYY-MM-DDTHH:mm'，归一化为空格分隔
+        """把时间归一化成 'YYYY-MM-DD HH:mm' 并校验格式。
+
+        参数：value —— 浏览器 datetime-local 控件提交的值（形如 '2026-10-07T14:30'）。
+        返回：空格分隔的 'YYYY-MM-DD HH:mm'；格式不符时抛 ValueError。
+        约定：库里统一存空格分隔的字符串（见 docs/system-design.md 第 6 节），
+            所以 T 在这里就被替换掉，后续环节不必再处理两种写法。
+        """
         text = (value or "").strip().replace("T", " ")
         if not TIME_RE.match(text):
             raise ValueError("时间格式应为 YYYY-MM-DD HH:mm")

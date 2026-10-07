@@ -79,6 +79,14 @@ var STATUS_STYLE = {
 var currentId = '1';
 var currentItem = null;
 
+/**
+ * 读出本机标记为已解决的物品 id 列表。
+ *
+ * @returns {Array<string>} id 数组；localStorage 不可用或内容损坏时返回空数组
+ *
+ * 阶段 0 保留的旧机制，只影响本机。阶段 4 起改用服务端 status 字段，
+ * 届时本函数与 saveResolvedIds 一并删除。
+ */
 function getResolvedIds() {
   try {
     return JSON.parse(localStorage.getItem('campusResolved') || '[]');
@@ -87,12 +95,34 @@ function getResolvedIds() {
   }
 }
 
+/**
+ * 把"已解决"的 id 列表写回 localStorage。
+ *
+ * @param {Array<string>} list 完整的 id 列表（调用方负责先 push 再传进来）
+ * @returns {void}
+ *
+ * 写入失败（隐私模式、配额满）时静默忽略：状态更新不是关键路径，
+ * 为了它弹一个错误提示反而打扰用户。
+ */
 function saveResolvedIds(list) {
   try {
     localStorage.setItem('campusResolved', JSON.stringify(list));
   } catch (err) { /* 本地存储不可用时忽略 */ }
 }
 
+/**
+ * 把发布页存下的那条数据，补全成详情页渲染需要的形状。
+ *
+ * @param {Object} s localStorage 里的 campusNewItem：{name, type, category, time,
+ *                     place, desc, contact, publish}
+ * @returns {Object} 与 ITEMS 里的条目字段一致的对象
+ *
+ * 补全规则：状态按类型给（寻物=寻找中、招领=待认领，**永远不是已解决**）、
+ * 图标取通用的问号/手形图标、发布者固定为「我（本机发布）」、头像固定为「我」、
+ * 脱敏串由 contact 现算。其余字段为空时套一组兜底值，保证页面不出现空白。
+ *
+ * 阶段 4 起这些补全改由服务端在发布时完成，本函数删除。
+ */
 function buildNewItem(s) {
   var isSeek = s.type === 'seek';
   return {
@@ -133,6 +163,21 @@ function applyStatus(state) {
   }
 }
 
+/**
+ * 把一条物品的全部字段写进详情页的各个占位元素。
+ *
+ * @param {Object} it 物品对象（结构同 ITEMS 里的条目，或 buildNewItem 的产物）
+ * @returns {void}
+ *
+ * 除了填字段，还做两件事：
+ * 1. 每次渲染都把联系方式面板复原成"未展开"——展开是看一眼就够的动作，
+ *    不该跨条目残留。
+ * 2. 计算最终状态：本机 localStorage 标记过，或数据自身 status 就是已解决，
+ *    都算已解决。
+ *
+ * 约束：这里逐个 `getElementById` 写 textContent，元素 id 与页面严重耦合，
+ * 改 HTML 时要一起改（见 docs/system-design.md 第 7.2 节的 id 清单）。
+ */
 function render(it) {
   var isSeek = (it.type === 'seek');
 
@@ -170,6 +215,19 @@ function render(it) {
   applyStatus(resolved ? 'resolved' : it.status);
 }
 
+/**
+ * 取 ?id 参数，找到对应物品并渲染。页面启动时调用一次。
+ *
+ * @returns {void}
+ *
+ * id 的三种情况：
+ * - 正常 id：从内嵌数据里取，取不到则回落 1 号（改造前的容错行为）。
+ * - 'new'：读 localStorage 里刚发布的那条，用 buildNewItem 补全；本机没有时
+ *   也回落到 1 号，避免页面空白。
+ * - 缺参数：按 1 号处理。
+ *
+ * 阶段 3 起改为 GET /api/items/{id}，'new' 这个特殊值随之取消。
+ */
 function loadItem() {
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id') || '1';
@@ -199,6 +257,15 @@ function loadItem() {
   render(item);
 }
 
+/**
+ * 展开完整联系方式。绑在「联系发布者」按钮上。
+ *
+ * @returns {void}
+ *
+ * 做的是"换一块"而不是"展开一段"：隐藏按钮、显示下方面板，避免按钮和已展开的
+ * 内容同时出现。完整联系方式本来就在页面里（改造后会随接口返回），
+ * 这一步只是从隐藏变成可见，没有二次请求。
+ */
 function revealContact() {
   document.getElementById('dContactRevealed').classList.remove('hidden');
   document.getElementById('dContactBtnWrap').classList.add('hidden');
