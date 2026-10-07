@@ -33,7 +33,8 @@
 | `index.html` + `js/index.js` | **已实现**：列表由 `GET /api/items/home` 驱动 |
 | `detail.html` + `js/detail.js` | **已实现**：数据来自 `GET /api/items/{id}`（阶段 3）。内嵌的 8 条演示数据已删除，编号由服务端给出；404 时回落取 1 号。**唯一还读 localStorage 的是 `?id=new` 分支**（本机发布流程的过渡，阶段 4 随发布改造一并删除） |
 | `search.html` + `js/search.js` | **已实现**：数据来自 `GET /api/items/search`（阶段 3）。8 张硬编码卡片、前端关键词匹配、`insertLocalPost`、`applyResolved` 全部删除；卡片改由 `renderCard(item, 'search')` 渲染，条数与空状态由服务端 `count` 决定 |
-| `publish.html` · `success.html` 及其 js | **阶段 0 拆分已完成**（内容逐字迁入、共用代码提取到 `common.js`、行内脚本外置），**逻辑仍沿用原实现**（用 localStorage 暂存刚发布的那条）；改造在阶段 4 |
+| `success.html` + `js/success.js` | **已实现**（阶段 4）：按 `?id` 从 `GET /api/items/{id}` 取摘要，「查看详情」改为按真实 id 动态设置链接。带一级**过渡分支**：无 `?id` 时依次退回 localStorage 的 `campusNewItem`、写死的兜底摘要——因为发布页还没改成"带新 id 跳转"（任务 ④），④ 落地后删掉该分支 |
+| `publish.html` + `js/publish.js` | **阶段 0 拆分已完成**，**逻辑仍沿用原实现**（把刚发布的那条写进 localStorage）；改造在阶段 4，是发布链的最后一环 |
 | 后端 `db.py` / `schemas.py` / `serialize.py` / `seed.py` / `main.py` | **已实现**：建表、播种、序列化、首页接口 |
 | `GET /api/items/home`、`GET /api/items/search`、`GET /api/items/{id}` | **已实现**：三个读接口全部可用 |
 | `POST /api/items`、`POST /api/items/{id}/resolve` | **已实现**（阶段 4 的后端部分）：五个接口全部落地，不再有占位路由 |
