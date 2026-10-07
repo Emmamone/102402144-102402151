@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+
+<html class="w-full h-full overflow-hidden" lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>校园失物招领 · 信息详情</title>
+<script src="https://modao.cc/agent-py/static/source/js/tailwindcss.js"></script>
+<script src="https://modao.cc/agent-py/static/source/js/iconify-icon.min.js"></script>
+<link rel="stylesheet" href="css/visual-theme.css"/>
+</head>
+<body class="w-full h-full m-0 overflow-hidden flex items-center justify-center bg-slate-100 text-slate-800 antialiased">
+<div id="phone-canvas" class="w-full h-full max-w-[393px] max-h-[852px] bg-[#f5f7fb] flex flex-col overflow-hidden relative">
+<!-- 占位页：结构待实现。接口 /api/items/{id} 与 /api/items/{id}/resolve 已注册（当前返回 501）。 -->
+<header class="shrink-0 bg-white border-b border-slate-100 px-3 pt-4 pb-3 flex items-center gap-2">
+<a class="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-slate-500 active:bg-slate-100" href="index.html">
+<iconify-icon class="text-[20px]" icon="mdi:chevron-left"></iconify-icon>
+</a>
+<h1 class="text-[16px] font-semibold text-slate-800">信息详情</h1>
+</header>
+<div class="flex-1 min-h-0 flex items-center justify-center px-6">
+<p class="text-center text-[13px] leading-relaxed text-slate-400">本页面尚未实现<br/>接口已保留：GET /api/items/{id}、POST /api/items/{id}/resolve<br/>实现顺序见 docs/development-plan.md 阶段 2 / 4</p>
+</div>
+<div class="hidden absolute left-1/2 -translate-x-1/2 bottom-16 z-50 px-4 py-2 rounded-xl bg-slate-800/90 text-white text-[12px] whitespace-nowrap" id="toast">提示</div>
+</div>
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/detail.js"></script>
+</body>
+</html>

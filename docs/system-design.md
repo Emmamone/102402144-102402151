@@ -23,6 +23,21 @@
 | 前端 | 原生 HTML + 原生 `fetch` | 页面必须保持不变，不引入任何构建工具与框架。 |
 | 静态托管 | FastAPI `StaticFiles` | 与接口同源，彻底避免跨域配置。 |
 
+### 1.1 当前实现进度
+
+本轮只落地了**首页**这条纵切（对应《开发计划》阶段 0 的部分内容 + 阶段 1 + 阶段 2 的首页部分）：
+
+| 部分 | 状态 |
+| --- | --- |
+| `frontend/index.html` + `js/api.js` + `js/common.js` + `js/index.js` + `css/visual-theme.css` | **已实现**：首页列表由 `GET /api/items/home` 驱动 |
+| `frontend/search.html` · `detail.html` · `publish.html` · `success.html` 及其 js | **占位**：结构与脚本引用已就位，页面内写明"尚未实现"，逻辑留空 |
+| 后端 `db.py` / `schemas.py` / `serialize.py` / `seed.py` / `main.py` | **已实现**：建表、播种、序列化、首页接口 |
+| `GET /api/items/home` | **已实现** |
+| `GET /api/items/search`、`GET /api/items/{id}`、`POST /api/items`、`POST /api/items/{id}/resolve` | **占位**：路径与响应形状已按设计固定，返回 501 + `{"code":"not_implemented","message":...}` |
+| `tests/unit` · `tests/integration` · `tests/contract` | **已实现**，三层齐备 |
+
+**尚未处理的遗留项**：仓库根目录仍保留着改造前的 4 个页面源文件（`search.html`、`detail.html`、`publish.html`、`success.html`）与 `home.html`。它们是**未纳入版本控制的原始素材**，内容尚未迁入 `frontend/` 下的占位页；在对应页面实现完成之前不要删除，否则那 4 个页面的原始文案与结构会永久丢失。
+
 ## 2. 总体架构
 
 ```
@@ -99,8 +114,10 @@ campus-lost-found/
 │   │   ├── test_serialize.py        脱敏、时间推导、编号生成、搜索索引拼装
 │   │   └── test_schemas.py          请求模型校验
 │   ├── integration/
+│   │   ├── test_seed.py             建表与播种的幂等性
 │   │   ├── test_items_read.py       首页列表、搜索、详情
-│   │   └── test_items_write.py      发布、标记已解决、播种幂等
+│   │   ├── test_placeholders.py     占位接口返回 501、旧地址跳转、静态页可达
+│   │   └── test_items_write.py      发布、标记已解决（阶段 4）
 │   └── contract/
 │       └── test_api_contract.py     接口字段与前端渲染的契约
 ├── .github/
@@ -144,7 +161,9 @@ CREATE TABLE IF NOT EXISTS items (
   masked       TEXT    NOT NULL,              -- 脱敏联系方式（默认展示）
   contact      TEXT    NOT NULL,              -- 完整联系方式（点击展开后展示）
   keywords     TEXT    NOT NULL,              -- 空格分隔的搜索索引文本
-  home_order   INTEGER,                       -- 演示数据在首页的顺序 1~6；用户新发布为 NULL
+  source       TEXT    NOT NULL DEFAULT 'demo' CHECK (source IN ('demo','user')),
+                                              -- 数据来源：演示数据 / 用户新发布
+  home_order   INTEGER,                       -- 演示数据在首页的顺序 1~6；不在首页与用户新发布为 NULL
   search_order INTEGER,                       -- 演示数据在搜索页的顺序 1~8；用户新发布为 NULL
   created_at   TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
 );
@@ -174,19 +193,30 @@ CREATE INDEX IF NOT EXISTS idx_items_search ON items(search_order);
 | `avatar` | 直接抄录，如"张" | 固定为"我" |
 | `published_at` | 直接抄录 | 服务端当前时间 |
 | `home_order` / `search_order` | 1~6 / 1~8 | `NULL`（排序时置顶） |
+| `source` | `'demo'` | `'user'` |
 | 物品编号 | 读取时生成，不落库 | 同左 |
+
+> **为什么需要 `source`**：7、8 两条演示数据**只出现在搜索页与详情页，不在首页**（这是现状），
+> 所以它们的 `home_order` 也是 `NULL` —— 与"用户新发布"的 `NULL` 语义撞车，
+> 光靠 `home_order` 无法区分"不在首页的演示数据"和"新发布的数据"。
+> 用一个显式的来源列把两者分开，排序规则才能写成一条没有歧义的 SQL。
 
 ### 4.3 排序策略
 
 ```sql
 -- 首页列表
-ORDER BY (home_order IS NULL) DESC, home_order ASC, id DESC
+WHERE (:type = 'all' OR type = :type)
+  AND (source = 'user' OR home_order IS NOT NULL)
+ORDER BY (source = 'user') DESC, home_order ASC, id DESC
 
 -- 搜索结果
-ORDER BY (search_order IS NULL) DESC, search_order ASC, id DESC
+WHERE (:type = 'all' OR type = :type)
+  AND (:q = '' OR instr(lower(keywords), lower(:q)) > 0)
+ORDER BY (source = 'user') DESC, search_order ASC, id DESC
 ```
 
-- `(home_order IS NULL) DESC`：把用户新发布的数据（`home_order` 为 NULL）排到最前，满足"新发布信息可见"的需求。
+- `AND (source = 'user' OR home_order IS NOT NULL)`（仅首页）：排除掉"不在首页的演示数据"（7、8 号），但保留用户新发布的数据。
+- `(source = 'user') DESC`：把用户新发布的数据排到最前，满足"新发布信息可见"的需求。
 - `home_order ASC` / `search_order ASC`：演示数据保持现有展示顺序（首页 1~6；搜索页 1、7、5、3、2、4、6、8）。
 - `id DESC`：兜底排序。同一分钟内连续发布多条时，按 id 倒序保证顺序稳定且"最新的在最前"。
 
@@ -211,7 +241,7 @@ ORDER BY (search_order IS NULL) DESC, search_order ASC, id DESC
 | 7 | 校园卡 | find | unclaimed | 证件卡片 | mdi:card-account-details-outline | 2026-09-27 10:15 | 今天 10:15 | 第三教学楼 B202 | 2026-09-27 10:22 | 李 | NULL | 2 |
 | 8 | 学生证 | find | unclaimed | 证件卡片 | mdi:badge-account-horizontal-outline | 2026-09-23 16:40 | 09-23 16:40 | 大学生活动中心 | 2026-09-23 16:55 | 赵 | NULL | 8 |
 
-> 注意 7、8 两条只出现在搜索页与详情页，不在首页「最新信息」里——这是现状，`home_order` 置 NULL 且 `search_order` 有值即表达了这一点（首页查询另加 `home_order IS NOT NULL OR 用户新发布` 的语义，实现时由 `home_order` 排序与固定条数共同决定，详见 5.1）。
+> 注意 7、8 两条只出现在搜索页与详情页，不在首页「最新信息」里——这是现状。它们的 `home_order` 为 `NULL`、`search_order` 有值，首页查询靠 `home_order IS NOT NULL` 把它们排除（详见 4.3）。
 
 ### 4.5 读取时的派生字段
 
@@ -229,7 +259,7 @@ ORDER BY (search_order IS NULL) DESC, search_order ASC, id DESC
 
 ```
 ListItem（列表项，用于首页与搜索）
-{ id, name, type, status, icon, desc, time, place }
+{ id, name, type, status, icon, desc, time, place, keywords }
 
 DetailItem（详情项，用于详情、发布返回、标记已解决返回）
 { id, code, name, type, status, icon, category, timeLabel, time, place,
@@ -696,7 +726,7 @@ ruff check .                            # 代码风格检查
 
 用 `python -m pytest` 而非裸 `pytest`，是为了把工作目录加入 `sys.path`、让测试能 `import backend`。
 
-**持续集成**：`.github/workflows/ci.yml` 在任何分支的 push、任何 PR 以及手动触发时运行，步骤为「确认前置条件（测试层目录 + 依赖文件） → 准备 Python → 安装依赖 → ruff 检查 → 单元测试 → 集成测试 → 契约测试」。三层各自独立成步，失败时能直接看出是哪一层的问题；前置条件检查排在装依赖之前，缺测试层或依赖文件时构建会以明确信息失败，不会出现"没有测试却显示通过"的假绿。详见《代码规范》第 3.8 节。
+**持续集成**：`.github/workflows/ci.yml` 在任何分支的 push、任何 PR 以及手动触发时运行，步骤为「确认前置条件（测试层目录 + 依赖文件） → 准备 Python → 安装依赖 → ruff 检查 → 单元测试 → 集成测试 → 契约测试」。三层各自独立成步，失败时能直接看出是哪一层的问题；前置条件检查排在装依赖之前，缺测试层或依赖文件时构建会以明确信息失败。某一层**目录存在但还没有测试**同样算失败——`pytest` 在无测试可收集时返回退出码 5，所以不会出现"没有测试却显示通过"的假绿；由此在测试分层建设完成之前 CI 会一直是红的，这属预期。详见《代码规范》第 3.8 节。
 
 **注意事项**：
 
