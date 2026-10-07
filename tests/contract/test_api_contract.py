@@ -4,10 +4,13 @@
 所以"接口返回的字段是否还是页面读取的那几个"必须在这里锁住——字段改名在后端
 测试里可能全绿，但页面会静默丢内容。
 
-覆盖前端的三处渲染：
+覆盖前端的三处渲染与写路径的返回值：
 - 列表卡片（首页与搜索页共用 ``renderCard``）→ ``CARD_REQUIRED``
 - 详情页 ``render(it)`` → ``DETAIL_REQUIRED``
 - 发布成功页 ``renderSummary(it)`` → ``SUMMARY_REQUIRED``
+
+- 写路径：发布与标记已解决的返回值会被前端直接拿去渲染（详情页 / 成功页摘要），
+  所以也必须与详情接口同形 → 同 ``DETAIL_REQUIRED``
 - 错误体形状 → ``{code, message}``
 
 **前端新增对某字段的依赖时，必须同步在本文件加断言。**
@@ -65,12 +68,15 @@ def test_id_是唯一整数且与详情页链接一致(client):
 
 
 def test_错误体形状是_code_message(client):
-    """前端 api.js 靠 body.message 给用户提示，所以错误体必须是这个形状。
+    """前端 api.js 靠 body.message 给用户提示，所以"业务错误"必须是这个形状。
 
-    两类错误各验一个：404（id 不存在，已经会真实发生）与 501（尚未实现的写接口）。
+    覆盖 404 的两处（详情、标记已解决）。**故意不含 422**：字段校验失败走的是
+    FastAPI 原生形状 ``{detail: [...]}``，设计如此——前端本地校验先拦一道，
+    真出现 422 说明有人在绕过前端直接调接口。
     """
-    for response in (client.get("/api/items/999"), client.post("/api/items")):
-        assert response.status_code >= 400
+    for method, path in (("GET", "/api/items/999"), ("POST", "/api/items/999/resolve")):
+        response = client.request(method, path)
+        assert response.status_code == 404
         assert set(response.json()) == {"code", "message"}
 
 
@@ -148,16 +154,32 @@ SUMMARY_REQUIRED = {
     "publish": str,
 }
 
-
 def test_成功页摘要所需的字段都在详情接口里(client):
     body = client.get("/api/items/1").json()
     for field, expected_type in SUMMARY_REQUIRED.items():
         assert field in body, "成功页摘要依赖 %s，接口必须返回" % field
         assert isinstance(body[field], expected_type), field
 
-
 def test_成功页用的是脱敏后的联系方式(client):
     """摘要里展示的是 masked；原始 contact 只在点开详情后才出现。"""
     body = client.get("/api/items/1").json()
     assert body["masked"] == "138****6621"
     assert body["masked"] != body["contact"]
+
+# 写路径的字段契约
+# 发布成功后的返回值会被前端直接拿去渲染（详情页 / 成功页摘要），
+# 标记已解决的返回值会被详情页拿去重渲染——两者都必须与详情接口同形
+# --------------------------------------------------------------------------
+def test_发布返回的字段与详情页渲染所需完全一致(client, create_payload):
+    body = client.post("/api/items", json=create_payload).json()
+    assert set(body) == set(DETAIL_REQUIRED), "发布返回值字段集变了，前端要同步改"
+
+def test_标记已解决返回的字段与详情页渲染所需完全一致(client):
+    body = client.post("/api/items/5/resolve").json()
+    assert set(body) == set(DETAIL_REQUIRED)
+
+def test_写路径返回的字段类型同样正确(client, create_payload):
+    for body in (client.post("/api/items", json=create_payload).json(),
+                 client.post("/api/items/5/resolve").json()):
+        for field, expected_type in DETAIL_REQUIRED.items():
+            assert isinstance(body[field], expected_type), field

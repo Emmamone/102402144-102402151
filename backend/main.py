@@ -13,7 +13,9 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -23,7 +25,36 @@ from fastapi.staticfiles import StaticFiles
 
 from . import db, schemas, serialize
 
-FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+
+def _frontend_dir() -> Path:
+    """前端静态文件所在目录，按顺序取第一个存在的。
+
+    1. 环境变量 ``CLF_FRONTEND_DIR`` —— 临时指到别处调试用
+    2. **exe 同级的 ``frontend/``** —— 打包后优先用这一份。于是改页面、样式、
+       脚本只需要替换这个文件夹，**不用重新打包 exe**（前端资源与后端代码解耦）
+    3. 包内的 ``frontend/``（``sys._MEIPASS``）—— 上一份不存在时的兜底，
+       保证把 exe 单独拷到别的机器上仍然能跑
+    4. 开发时：仓库根目录的 ``frontend/``
+
+    为什么显式判断而不是直接靠 ``__file__`` 往上推：后者在冻结环境里的取值依赖
+    PyInstaller 的内部约定，而且**两种**位置（外部目录 / 包内解压目录）都有可能，
+    写清楚以后别人才敢动。启动时会把最终生效的是哪一份打出来。
+    """
+    env_dir = os.environ.get("CLF_FRONTEND_DIR")
+    if env_dir:
+        return Path(env_dir)
+
+    if getattr(sys, "frozen", False):
+        beside_exe = Path(sys.executable).resolve().parent / "frontend"
+        if beside_exe.is_dir():
+            return beside_exe
+        base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+        return base / "frontend"
+
+    return Path(__file__).resolve().parent.parent / "frontend"
+
+
+FRONTEND_DIR = _frontend_dir()
 
 app = FastAPI(title="校园失物招领 API", version="0.1.0")
 
@@ -52,22 +83,8 @@ def get_conn():
         conn.close()
 
 
-def _not_implemented(what: str) -> HTTPException:
-    """构造"尚未实现"的统一错误响应。
-
-    参数：what —— 接口的中文名，用于拼出「XXX 尚未实现」这句提示。
-    返回：一个 501 的 HTTPException，错误体由上面的处理器摊平成 {code, message}。
-    约束：占位接口一律走这里，保证 4 个未实现路由的错误体形状完全一致
-        （tests/integration/test_placeholders.py 会校验 code 为 not_implemented）。
-    """
-    return HTTPException(
-        status_code=501,
-        detail={"code": "not_implemented", "message": "%s 尚未实现" % what},
-    )
-
-
 # --------------------------------------------------------------------------
-# 已实现：首页列表
+# 读接口：首页列表、搜索、详情
 # --------------------------------------------------------------------------
 @app.get("/api/items/home", response_model=schemas.HomeResponse)
 def list_home(
@@ -95,7 +112,7 @@ def list_home(
 
 
 # --------------------------------------------------------------------------
-# 占位：待后续阶段实现（路径与响应形状已按设计固定）
+# 读接口（续）：搜索
 # --------------------------------------------------------------------------
 @app.get("/api/items/search", response_model=schemas.HomeResponse)
 def search_items(
@@ -161,31 +178,106 @@ def get_item(
     return serialize.row_to_detail_item(row)
 
 
-@app.post("/api/items")
-def create_item_placeholder() -> None:
-    """发布接口占位。
+# --------------------------------------------------------------------------
+# 写接口：发布、标记已解决
+# --------------------------------------------------------------------------
+@app.post("/api/items", response_model=schemas.DetailItem, status_code=201)
+def create_item(
+    payload: schemas.CreateRequest,
+    conn: sqlite3.Connection = Depends(get_conn),
+) -> dict:
+    """发布一条信息。
 
-    请求体（待实现）：CreateRequest —— name / type / category / time / place / desc / contact。
-    返回（待实现）：201 + DetailItem，并在服务端补全状态、图标、发布者、头像、
-        脱敏串、搜索索引与发布时间（前端不提供这些）。
-    当前：抛 501。前端 publish.js 因此仍写 localStorage。
-    规则见 docs/system-design.md 第 5.4 节。
+    请求体：``CreateRequest``（name / type / category / time / place / desc / contact）。
+    前端已先校验一遍必填，这里是二次兜底——防止绕过前端直接调接口。
+
+    返回：201 + 完整的 DetailItem，含服务端生成的 id 与编号（LF-00N）。
+
+    服务端补全的字段（前端**不提供**，也不要让它提供）：
+
+    - ``status``：寻物 → seeking，招领 → unclaimed。新发布的一律**不是**已解决。
+    - ``icon``：寻物/招领各一个通用图标，与原前端 buildNewItem 的取值一致。
+    - ``card_desc``：取 ``desc``。卡片用 line-clamp-2 截断，不必另写一份短描述。
+    - ``time_display``：留 NULL → 读取时按"今天/昨天"推导，让新数据随时间自然变化
+      （演示数据那一列是写死的文案，见 serialize.format_card_time）。
+    - ``published_at``：服务端当前时间，不用客户端时钟（客户端时间可能不准）。
+    - ``publisher`` / ``avatar``：固定「我（本机发布）」/「我」——没有账号体系。
+    - ``masked``：由 ``contact`` 现算。新数据不存在"写死的脱敏串"这回事。
+    - ``keywords``：name + category + place + desc + 类型同义词，供搜索用。
+    - ``source`` / ``home_order`` / ``search_order``：'user' / NULL / NULL，
+      排序时因此排在最前（见 system-design 第 4.3 节）。
     """
-    raise _not_implemented("发布接口")
+    now = datetime.now()
+    values = {
+        "name": payload.name,
+        "type": payload.type,
+        "status": serialize.DEFAULT_STATUS[payload.type],
+        "category": payload.category,
+        "icon": serialize.DEFAULT_ICON[payload.type],
+        "card_desc": payload.desc,
+        "desc": payload.desc,
+        "happened_at": payload.time,
+        "time_display": None,
+        "place": payload.place,
+        "published_at": now.strftime("%Y-%m-%d %H:%M"),
+        "publisher": serialize.DEFAULT_PUBLISHER,
+        "avatar": serialize.DEFAULT_AVATAR,
+        "masked": serialize.mask_contact(payload.contact),
+        "contact": payload.contact,
+        "keywords": serialize.build_keywords(
+            payload.name, payload.category, payload.place, payload.desc, payload.type
+        ),
+        "source": "user",
+        "home_order": None,
+        "search_order": None,
+    }
+
+    # 列名与占位符都来自上面这个固定字典，值一律参数化传入
+    with conn:
+        cursor = conn.execute(
+            "INSERT INTO items (%s) VALUES (%s)"
+            % (", ".join(values), ", ".join("?" for _ in values)),
+            tuple(values.values()),
+        )
+        new_id = cursor.lastrowid
+
+    row = conn.execute("SELECT * FROM items WHERE id = ?", (new_id,)).fetchone()
+    return serialize.row_to_detail_item(row)
 
 
-@app.post("/api/items/{item_id}/resolve")
-def resolve_item_placeholder(item_id: int) -> None:
-    """标记已解决接口占位。
+@app.post("/api/items/{item_id}/resolve", response_model=schemas.DetailItem)
+def resolve_item(
+    item_id: int,
+    conn: sqlite3.Connection = Depends(get_conn),
+) -> dict:
+    """把一条信息标记为已解决。
 
-    路径参数：item_id —— 物品 id。
-    返回（待实现）：200 + DetailItem（status 变为 resolved）；id 不存在时 404；
-        重复调用**幂等**，不报错。
-    当前：抛 501。前端 detail.js 的 markResolved 因此仍写 localStorage。
-    约束：本接口不做发布者归属校验（与现状一致），且生效范围是全局的。
-    规则见 docs/system-design.md 第 5.5 节。
+    路径参数：
+        item_id —— 物品 id。
+
+    返回：200 + 更新后的 DetailItem（``status`` 为 ``resolved``）。
+
+    异常：id 不存在时 404，错误体与详情接口一致。
+
+    幂等：对已解决的条目重复调用不报错，仍返回 resolved——前端按钮被点两次、
+    或者两个人同时点，结果都一样。
+
+    约束：**不做发布者归属校验**（与改造前一致：任何访客都能点这个按钮），
+    而且生效范围是**全局**的，不再像过去那样只影响本机浏览器。
     """
-    raise _not_implemented("标记已解决接口")
+    row = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "not_found", "message": "物品不存在"},
+        )
+
+    if row["status"] != "resolved":
+        with conn:
+            conn.execute("UPDATE items SET status = 'resolved' WHERE id = ?", (item_id,))
+        row = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
+
+    return serialize.row_to_detail_item(row)
 
 
 # --------------------------------------------------------------------------

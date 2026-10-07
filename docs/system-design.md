@@ -25,7 +25,7 @@
 
 ### 1.1 当前实现进度
 
-**阶段 0、1、2、3 已完成**——三个读接口全部实现，首页 / 详情页 / 搜索页三个页面的读改造也已落地；阶段 4（写路径）尚未开始：
+**阶段 0–3 已完成，阶段 4 的后端部分也已完成**——五个接口全部落地，三个页面的读改造已完成；前端三页的写改造与写路径测试尚未开始：
 
 | 部分 | 状态 |
 | --- | --- |
@@ -37,7 +37,7 @@
 | `publish.html` + `js/publish.js` | **阶段 0 拆分已完成**，**逻辑仍沿用原实现**（把刚发布的那条写进 localStorage）；改造在阶段 4，是发布链的最后一环 |
 | 后端 `db.py` / `schemas.py` / `serialize.py` / `seed.py` / `main.py` | **已实现**：建表、播种、序列化、首页接口 |
 | `GET /api/items/home`、`GET /api/items/search`、`GET /api/items/{id}` | **已实现**：三个读接口全部可用 |
-| `POST /api/items`、`POST /api/items/{id}/resolve` | **占位**：路径与响应形状已按设计固定，返回 501 + `{"code":"not_implemented","message":...}` |
+| `POST /api/items`、`POST /api/items/{id}/resolve` | **已实现**（阶段 4 的后端部分）：五个接口全部落地，不再有占位路由 |
 | `tests/unit` · `tests/integration` · `tests/contract` | **已实现**，三层齐备 |
 
 改造前的 5 个页面源文件已全部迁入 `frontend/` 并删除，不再有"内容只存在于未跟踪文件里"的风险。
@@ -116,7 +116,7 @@ campus-lost-found/
 │   ├── seed.py                      幂等写入 8 条演示数据
 │   └── __main__.py                  启动入口：确保数据库、起服务、开浏览器（python -m backend）
 ├── tests/                           测试层（与 frontend / backend / docs 平级）
-│   ├── conftest.py                  公共 fixture：临时数据库、TestClient、演示数据
+│   ├── conftest.py                  公共 fixture：临时数据库、TestClient、演示数据、发布请求体
 │   ├── unit/
 │   │   ├── test_serialize.py        脱敏、时间推导、编号生成、搜索索引拼装
 │   │   ├── test_schemas.py          请求模型校验
@@ -124,7 +124,7 @@ campus-lost-found/
 │   ├── integration/
 │   │   ├── test_seed.py             建表与播种的幂等性
 │   │   ├── test_items_read.py       首页列表、搜索、详情
-│   │   ├── test_placeholders.py     写接口占位返回 501、旧地址跳转、静态页可达
+│   │   ├── test_static_serving.py   页面/主题/脚本能通过 HTTP 取到、旧地址跳转
 │   │   └── test_items_write.py      发布、标记已解决（阶段 4）
 │   └── contract/
 │       ├── test_api_contract.py     接口字段与前端渲染的契约
@@ -340,7 +340,7 @@ Content-Type: application/json
 ```
 
 - 201：返回完整 `DetailItem`（含新 id 与编号）。
-- 422 / 400：字段校验失败。
+- 422 / 400：字段校验失败（错误体形状见下方说明）。
 
 后端在落库前补全前端没有提供的字段：
 
@@ -354,7 +354,13 @@ Content-Type: application/json
 | `publisher` / `avatar` | `我（本机发布）` / `我` |
 | `masked` | 按 5.6 的规则由 `contact` 计算 |
 | `keywords` | `name + category + place + desc + ("寻物 丢了" | "招领 捡到")` |
+| `source` | `'user'`——排序时据此把新发布的排在演示数据之前 |
 | `home_order` / `search_order` | `NULL`（排序时置顶） |
+
+> **关于 422**：字段校验失败返回的是 FastAPI/Pydantic 的**原生形状** `{"detail": [...]}`，
+> 与业务错误（404 等）的 `{"code": ..., "message": ...}` 不是一套。这是有意的——前端本地
+> 校验会先拦一道，真出现 422 说明有人在绕过前端直接调接口，那种报文给开发者看更合适。
+> 契约测试 `test_错误体形状是_code_message` 只断言 404 那一类，不要顺手把 422 也塞进去。
 
 ### 5.5 标记已解决
 

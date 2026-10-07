@@ -7,17 +7,18 @@
 
 1. 调用方显式传入的 ``path``（测试用临时文件走这条）
 2. 环境变量 ``CLF_DB_PATH``
-3. 仓库根目录下的 ``db.sqlite3``（已被 .gitignore 忽略）
+3. ``default_db_path()`` —— 开发时是仓库根目录的 ``db.sqlite3``，
+   打包成 exe 后是 exe 同级目录（见该函数的说明）
 """
 
 from __future__ import annotations
 
 import os
 import sqlite3
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DB_PATH = REPO_ROOT / "db.sqlite3"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS items (
@@ -49,12 +50,27 @@ CREATE INDEX IF NOT EXISTS idx_items_search ON items(search_order);
 """
 
 
+def default_db_path() -> Path:
+    """默认的数据库位置。
+
+    开发时是仓库根目录的 ``db.sqlite3``；**打包成 exe 后是 exe 的同级目录**。
+
+    为什么不沿用 ``__file__``：单文件模式下 ``__file__`` 指向的是进程启动时
+    解压出来的临时目录，进程一退就被删——数据库放那儿等于每次启动都像第一次运行，
+    用户发布的数据、标记过的已解决状态全都不留痕。放在 exe 旁边才是"可持久化"
+    的位置（也方便直接看到、备份、删除重来）。
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent / "db.sqlite3"
+    return REPO_ROOT / "db.sqlite3"
+
+
 def resolve_db_path(path: str | Path | None = None) -> Path:
-    """按 显式入参 > 环境变量 > 默认路径 的顺序解析数据库位置。"""
+    """按 显式入参 > 环境变量 ``CLF_DB_PATH`` > ``default_db_path()`` 的顺序解析。"""
     if path is not None:
         return Path(path)
     env_path = os.environ.get("CLF_DB_PATH")
-    return Path(env_path) if env_path else DEFAULT_DB_PATH
+    return Path(env_path) if env_path else default_db_path()
 
 
 def connect(path: str | Path | None = None) -> sqlite3.Connection:
