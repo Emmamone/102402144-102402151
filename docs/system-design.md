@@ -25,16 +25,16 @@
 
 ### 1.1 当前实现进度
 
-**阶段 0–3 已完成，阶段 4 的后端部分也已完成**——五个接口全部落地，三个页面的读改造已完成；前端三页的写改造与写路径测试尚未开始：
+**阶段 0–4 全部完成**——五个接口落地、五个页面的读写改造全部完成、**没有任何页面再使用 localStorage**；只剩阶段 5（README、手工回归、重新打包 exe）：
 
 | 部分 | 状态 |
 | --- | --- |
 | `frontend/` 5 个页面 + `css/visual-theme.css` + 7 个 js | **结构已就位**：一页一 html、一页一 js、主题单份；HTML 中无内联 `<style>` 与内联脚本 |
 | `index.html` + `js/index.js` | **已实现**：列表由 `GET /api/items/home` 驱动 |
-| `detail.html` + `js/detail.js` | **已实现**：数据来自 `GET /api/items/{id}`（阶段 3）。内嵌的 8 条演示数据已删除，编号由服务端给出；404 时回落取 1 号。**唯一还读 localStorage 的是 `?id=new` 分支**（本机发布流程的过渡，阶段 4 随发布改造一并删除） |
+| `detail.html` + `js/detail.js` | **已实现**（读：阶段 3；写：阶段 4）：读走 `GET /api/items/{id}`（404 回落 1 号），标记已解决走 `POST /api/items/{id}/resolve`。内嵌演示数据、`?id=new`、`campusResolved` 全部删除 |
 | `search.html` + `js/search.js` | **已实现**：数据来自 `GET /api/items/search`（阶段 3）。8 张硬编码卡片、前端关键词匹配、`insertLocalPost`、`applyResolved` 全部删除；卡片改由 `renderCard(item, 'search')` 渲染，条数与空状态由服务端 `count` 决定 |
-| `success.html` + `js/success.js` | **已实现**（阶段 4）：按 `?id` 从 `GET /api/items/{id}` 取摘要，「查看详情」改为按真实 id 动态设置链接。带一级**过渡分支**：无 `?id` 时依次退回 localStorage 的 `campusNewItem`、写死的兜底摘要——因为发布页还没改成"带新 id 跳转"（任务 ④），④ 落地后删掉该分支 |
-| `publish.html` + `js/publish.js` | **阶段 0 拆分已完成**，**逻辑仍沿用原实现**（把刚发布的那条写进 localStorage）；改造在阶段 4，是发布链的最后一环 |
+| `publish.html` + `js/publish.js` | **已实现**（阶段 4）：提交走 `POST /api/items`，成功后带新 id 跳到成功页；删掉了本地暂存与前端算的发布时间 |
+| `success.html` + `js/success.js` | **已实现**（阶段 4）：按 `?id` 从 `GET /api/items/{id}` 取摘要，「查看详情」按真实 id 动态设置；无 `?id` 或查询失败时用写死的兜底摘要 |
 | 后端 `db.py` / `schemas.py` / `serialize.py` / `seed.py` / `main.py` | **已实现**：建表、播种、序列化、首页接口 |
 | `GET /api/items/home`、`GET /api/items/search`、`GET /api/items/{id}` | **已实现**：三个读接口全部可用 |
 | `POST /api/items`、`POST /api/items/{id}/resolve` | **已实现**（阶段 4 的后端部分）：五个接口全部落地，不再有占位路由 |
@@ -128,7 +128,8 @@ campus-lost-found/
 │   │   └── test_items_write.py      发布、标记已解决（阶段 4）
 │   └── contract/
 │       ├── test_api_contract.py     接口字段与前端渲染的契约
-│       └── test_frontend_wiring.py  前端静态检查（内联块 / 资源存在 / 迁移进度）
+│       ├── test_frontend_wiring.py  前端静态检查（内联块 / 资源存在 / 迁移进度）
+│       └── test_openapi_document.py 接口文档必须与当前接口一致（防过期）
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                   持续集成：风格检查 + 三层测试
@@ -136,9 +137,11 @@ campus-lost-found/
 │   ├── PRD.md                       产品需求文档
 │   ├── system-design.md             本文档
 │   ├── development-plan.md          开发计划
-│   └── coding-standards.md          代码规范（含测试与文档同步要求）
+│   ├── coding-standards.md          代码规范（含测试与文档同步要求）
+│   └── openapi.json                 OpenAPI 3.1 接口文档（由代码生成，勿手改）
 ├── run_server.py                    打包入口（PyInstaller 的起点，只做一层转接）
 ├── build_exe.py                     打包脚本：一条命令生成根目录的 exe
+├── export_openapi.py                导出接口文档：生成 docs/openapi.json
 ├── campus-lost-found.exe            打包产物（运行时生成，不入库）
 ├── requirements.txt                 运行期依赖：fastapi、uvicorn
 ├── requirements-dev.txt             开发与测试依赖：pytest、httpx、ruff、pyinstaller
@@ -266,6 +269,22 @@ ORDER BY (source = 'user') DESC, search_order ASC, id DESC
 ## 5. 接口设计
 
 所有接口统一前缀 `/api`，请求与响应均为 JSON。
+
+### 5.0 接口文档（`docs/openapi.json`）
+
+本节表格是**给人看的设计说明**；机器可读的权威版本是从代码生成的 OpenAPI 3.1 文档：
+
+```bash
+.venv/Scripts/python.exe export_openapi.py     # 重新生成 docs/openapi.json
+```
+
+- 服务运行时会挂在 **`/openapi.json`**，交互式页面在 **`/docs`**（FastAPI 自带）。
+- `docs/openapi.json` 是**产物，不要手改**——接口说明取自代码里的 docstring，
+  参数说明取自 `Query(...)` / `Path(...)`，模型取自 `schemas.py`。要改文档就改代码再导出。
+- **防过期**：`tests/contract/test_openapi_document.py` 会把它与 `app.openapi()`
+  现场生成的做全量比对，改了接口忘了导出，CI 直接失败。
+- 每个业务接口都显式写了中文 `summary`——FastAPI 默认拿函数名当 summary，
+  不写会得到 `List Home` 这种英文标签，夹在一堆中文说明里很突兀。
 
 **响应对象**：
 

@@ -21,7 +21,7 @@
 <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
 <div class="flex flex-col gap-3 p-4">
 <!-- 发布信息页：寻物 / 招领两类表单，6 项必填。
-     当前提交写入 localStorage（阶段 4 改为 POST /api/items），交互与校验见 js/publish.js -->
+     提交走 POST /api/items，成功后带着新 id 跳到成功页 —— 交互与校验见 js/publish.js -->
 <!-- 第一步：选择发布类型 -->
 <section class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
 <div class="flex items-center gap-2">
