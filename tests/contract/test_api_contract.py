@@ -64,12 +64,15 @@ def test_id_是唯一整数且与详情页链接一致(client):
 
 
 def test_错误体形状是_code_message(client):
-    """前端 api.js 靠 body.message 给用户提示，所以错误体必须是这个形状。
+    """前端 api.js 靠 body.message 给用户提示，所以"业务错误"必须是这个形状。
 
-    两类错误各验一个：404（id 不存在，已经会真实发生）与 501（尚未实现的写接口）。
+    覆盖 404 的两处（详情、标记已解决）。**故意不含 422**：字段校验失败走的是
+    FastAPI 原生形状 ``{detail: [...]}``，设计如此——前端本地校验先拦一道，
+    真出现 422 说明有人在绕过前端直接调接口。
     """
-    for response in (client.get("/api/items/999"), client.post("/api/items")):
-        assert response.status_code >= 400
+    for method, path in (("GET", "/api/items/999"), ("POST", "/api/items/999/resolve")):
+        response = client.request(method, path)
+        assert response.status_code == 404
         assert set(response.json()) == {"code", "message"}
 
 

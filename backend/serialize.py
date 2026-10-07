@@ -21,6 +21,9 @@ TIME_LABEL = {"seek": "丢失时间", "find": "拾取时间"}
 DEFAULT_ICON = {"seek": "mdi:help-circle-outline", "find": "mdi:hand-heart-outline"}
 # 新发布数据的初始状态
 DEFAULT_STATUS = {"seek": "seeking", "find": "unclaimed"}
+# 新发布数据的发布者与头像：没有账号体系，只能标成"本机发布"
+DEFAULT_PUBLISHER = "我（本机发布）"
+DEFAULT_AVATAR = "我"
 
 
 def mask_contact(value: Any) -> str:
