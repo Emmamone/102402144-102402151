@@ -142,7 +142,7 @@ def test_详情与列表共用同一套编号规则(client):
 
 # --------------------------------------------------------------------------
 # 发布成功页 renderSummary(it) 读取的字段
-# 该页只展示摘要，用不到完整描述与联系方式之外的那几个字段
+# 该页只展示摘要——完整描述、编号、发布者等字段它都用不到
 # --------------------------------------------------------------------------
 SUMMARY_REQUIRED = {
     "id": int,
@@ -154,11 +154,13 @@ SUMMARY_REQUIRED = {
     "publish": str,
 }
 
+
 def test_成功页摘要所需的字段都在详情接口里(client):
     body = client.get("/api/items/1").json()
     for field, expected_type in SUMMARY_REQUIRED.items():
         assert field in body, "成功页摘要依赖 %s，接口必须返回" % field
         assert isinstance(body[field], expected_type), field
+
 
 def test_成功页用的是脱敏后的联系方式(client):
     """摘要里展示的是 masked；原始 contact 只在点开详情后才出现。"""
@@ -166,6 +168,8 @@ def test_成功页用的是脱敏后的联系方式(client):
     assert body["masked"] == "138****6621"
     assert body["masked"] != body["contact"]
 
+
+# --------------------------------------------------------------------------
 # 写路径的字段契约
 # 发布成功后的返回值会被前端直接拿去渲染（详情页 / 成功页摘要），
 # 标记已解决的返回值会被详情页拿去重渲染——两者都必须与详情接口同形
@@ -174,9 +178,11 @@ def test_发布返回的字段与详情页渲染所需完全一致(client, creat
     body = client.post("/api/items", json=create_payload).json()
     assert set(body) == set(DETAIL_REQUIRED), "发布返回值字段集变了，前端要同步改"
 
+
 def test_标记已解决返回的字段与详情页渲染所需完全一致(client):
     body = client.post("/api/items/5/resolve").json()
     assert set(body) == set(DETAIL_REQUIRED)
+
 
 def test_写路径返回的字段类型同样正确(client, create_payload):
     for body in (client.post("/api/items", json=create_payload).json(),
