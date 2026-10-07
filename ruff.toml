@@ -2,17 +2,31 @@
 # CI 会执行 `ruff check .`（只检查、不自动修改）。
 #
 # 规则集：
-#   E / W —— pycodestyle 的 PEP 8 风格与警告
-#   F     —— pyflakes：未使用变量、未定义名称等真实缺陷
-#   I     —— import 排序
+#   E4 / E5 / E7 / E9 —— pycodestyle 里稳定可用的几组（import 位置、行宽、语句、语法）
+#   E301 / E302       —— 顶层定义之间、类内成员之间的空行数
+#   W                 —— pycodestyle 警告
+#   F                 —— pyflakes：未使用变量、未定义名称等真实缺陷
+#   I                 —— import 排序
 #
-# 故意不选 UP（pyupgrade）、B（bugbear）等更激进的规则集：
-# 本项目代码量小，先把 PEP 8 与明显缺陷守住即可，避免风格争议。
+# **为什么没有直接写 "E"**：E301/E302 这两条空行规则目前在 ruff 的 preview 里，
+# 而 preview 一旦打开，`select = ["E"]` 会连带启用**所有**处于 preview 状态的 E 规则，
+# 引出一批与本次无关的告警。所以改成"显式列出稳定组 + 显式点名那两条"——
+# 既拿到空行检查，又不多引入别的变动。
+#
+# （已实测：不开 preview 时点名 E301/E302 会被 ruff 直接忽略，并给出
+#   "Selection `E302` has no effect because preview is not enabled" 警告。）
+#
+# 代价：preview 规则会随 ruff 版本变化，可能"今天绿明天红"。因此
+# requirements-dev.txt 把 ruff 钉了确切版本。
+#
+# 故意不选 UP（pyupgrade）、B（bugbear）等更激进的规则集：本项目代码量小，
+# 先把 PEP 8 与明显缺陷守住即可，避免风格争议。
 
 line-length = 100
 
 [lint]
-select = ["E", "F", "W", "I"]
+preview = true
+select = ["E4", "E5", "E7", "E9", "E301", "E302", "W", "F", "I"]
 
 [lint.per-file-ignores]
 # 演示数据是从原型页面逐字转抄的数据字面量，有几条描述超过 100 字符。
