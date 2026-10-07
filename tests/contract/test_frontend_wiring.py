@@ -27,7 +27,7 @@ PAGES = ["index", "search", "detail", "publish", "success"]
 #: 页面完成改造（阶段 3 / 4）后，必须同步改这张表，否则下面的测试会失败。
 WIRED = {
     "index": True,      # 阶段 2 / 3 已接
-    "search": False,    # 待阶段 3
+    "search": True,     # 阶段 3 已接
     "detail": True,     # 阶段 3 已接
     "publish": False,   # 待阶段 4
     "success": False,   # 待阶段 4
@@ -39,7 +39,7 @@ WIRED = {
 #: 移除后把这里的 True 改成 False，测试会盯着这件事。
 LOCAL_STORAGE_ALLOWED = {
     "index": False,
-    "search": True,     # 阶段 3 移除
+    "search": False,    # 阶段 3 已清理
     "detail": True,     # 阶段 4 移除
     "publish": True,    # 阶段 4 移除
     "success": True,    # 阶段 4 移除
