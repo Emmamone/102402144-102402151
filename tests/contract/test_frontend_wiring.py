@@ -125,3 +125,52 @@ def test_localStorage_残留与迁移进度一致(page):
     used = "localStorage." in page_js(page)
     assert used is LOCAL_STORAGE_ALLOWED[page], (
         "%s 页的 localStorage 残留与进度表不符：清理完成后请同步更新 LOCAL_STORAGE_ALLOWED" % page)
+
+
+# --------------------------------------------------------------------------
+# 搜索页（阶段 3 改造后新增的检查）
+# --------------------------------------------------------------------------
+def test_搜索页的卡片全部由脚本渲染():
+    """8 张硬编码卡片已删除，卡片改由 renderCard 渲染进 #resultItems。"""
+    html = page_html("search")
+    assert "data-result=" not in html, "搜索结果里不得再写死卡片"
+    assert 'id="resultItems"' in html, "渲染容器 #resultItems 不见了"
+
+
+def test_搜索页不再把本机发布的那条插进结果():
+    """insertLocalPost 是"同一件东西既有服务端一份、又有本机一份"的来源，随改造删除。
+
+    断言匹配的是**定义或调用**的形式而不是裸词：文件头注释里会说明"这个函数已被
+    删除"，只查裸词会被自己的注释绊倒（这个坑真踩过一次）。
+    """
+    assert not re.search(r"\binsertLocalPost\s*\(", page_js("search")), \
+        "不应再定义或调用 insertLocalPost"
+
+
+def test_搜索页不再做前端关键词匹配():
+    """匹配已移到服务端；前端再读一次 data-keywords 会变成双重过滤。"""
+    js = page_js("search")
+    assert not re.search(r"getAttribute\(\s*['\"]data-keywords", js), \
+        "前端不应再读 data-keywords 做匹配"
+    assert not re.search(r"getAttribute\(\s*['\"]data-result", js), \
+        "前端不应再读 data-result 做类型过滤"
+    assert "API.search(" in js
+
+
+def test_搜索页用共用的卡片模板渲染():
+    """卡片必须走 common.js 的 renderCard——它负责带上主题样式依赖的 data-* 属性。"""
+    js = page_js("search")
+    assert "renderCard(item, 'search')" in js
+
+
+@pytest.mark.parametrize("page", ["index", "search"])
+def test_渲染卡片的页面在占位里声明了卡片模板的类(page):
+    """Tailwind 运行时按源码生成样式类，卡片改由脚本渲染后只能靠占位 div 兜住。
+
+    ``opacity-80``（已解决卡片的弱化）是最容易漏掉的一个：漏了不报错，
+    只是样式悄悄不对——所以专门盯着它。
+    """
+    placeholder = page_html(page)[page_html(page).rfind('<div class="hidden'):]
+    for cls in ("opacity-80", "line-clamp-2", "active:scale-[0.99]",
+                "bg-emerald-50", "text-amber-600"):
+        assert cls in placeholder, "%s 的占位 div 缺少 %s" % (page, cls)
