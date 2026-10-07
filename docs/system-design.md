@@ -339,7 +339,7 @@ Content-Type: application/json
 ```
 
 - 201：返回完整 `DetailItem`（含新 id 与编号）。
-- 422 / 400：字段校验失败。
+- 422 / 400：字段校验失败（错误体形状见下方说明）。
 
 后端在落库前补全前端没有提供的字段：
 
@@ -353,7 +353,13 @@ Content-Type: application/json
 | `publisher` / `avatar` | `我（本机发布）` / `我` |
 | `masked` | 按 5.6 的规则由 `contact` 计算 |
 | `keywords` | `name + category + place + desc + ("寻物 丢了" | "招领 捡到")` |
+| `source` | `'user'`——排序时据此把新发布的排在演示数据之前 |
 | `home_order` / `search_order` | `NULL`（排序时置顶） |
+
+> **关于 422**：字段校验失败返回的是 FastAPI/Pydantic 的**原生形状** `{"detail": [...]}`，
+> 与业务错误（404 等）的 `{"code": ..., "message": ...}` 不是一套。这是有意的——前端本地
+> 校验会先拦一道，真出现 422 说明有人在绕过前端直接调接口，那种报文给开发者看更合适。
+> 契约测试 `test_错误体形状是_code_message` 只断言 404 那一类，不要顺手把 422 也塞进去。
 
 ### 5.5 标记已解决
 
