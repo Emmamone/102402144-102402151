@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+
+<html class="w-full h-full overflow-hidden" lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>校园失物招领 · 发布信息</title>
+<script src="https://modao.cc/agent-py/static/source/js/tailwindcss.js"></script>
+<script src="https://modao.cc/agent-py/static/source/js/iconify-icon.min.js"></script>
+<link rel="stylesheet" href="css/visual-theme.css"/>
+</head>
+<body class="w-full h-full m-0 overflow-hidden flex items-center justify-center bg-slate-100 text-slate-800 antialiased">
+<div id="phone-canvas" class="w-full h-full max-w-[393px] max-h-[852px] bg-[#f5f7fb] flex flex-col overflow-hidden relative">
+<header class="shrink-0 h-14 px-3 flex items-center gap-1 bg-white border-b border-slate-100">
+<a class="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-slate-500 active:bg-slate-100" href="index.html">
+<iconify-icon class="text-[24px]" icon="mdi:chevron-left"></iconify-icon>
+</a>
+<h1 class="text-[16px] font-semibold text-slate-800">发布信息</h1>
+<span class="ml-auto text-[11px] text-slate-400">标 <span class="text-rose-500">*</span> 为必填项</span>
+</header>
+<div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
+<div class="flex flex-col gap-3 p-4">
+<!-- 第一步：选择发布类型 -->
+<section class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+<div class="flex items-center gap-2">
+<span class="w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] font-semibold flex items-center justify-center">1</span>
+<h2 class="text-[14px] font-semibold text-slate-800">选择发布类型</h2>
+</div>
+<div class="mt-3 grid grid-cols-2 gap-3">
+<button class="rounded-2xl border p-3 text-left border-blue-600 bg-blue-50 transition" data-type="seek" onclick="setType('seek')" type="button">
+<div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center">
+<iconify-icon class="text-[22px] text-blue-600" icon="mdi:help-circle-outline"></iconify-icon>
+</div>
+<p class="mt-2 text-[14px] font-semibold text-slate-800">我要寻物</p>
+<p class="mt-0.5 text-[11px] leading-relaxed text-slate-400">我丢了物品，请大家帮忙留意</p>
+</button>
+<button class="rounded-2xl border p-3 text-left border-slate-200 bg-white transition" data-type="find" onclick="setType('find')" type="button">
+<div class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center">
+<iconify-icon class="text-[22px] text-emerald-600" icon="mdi:hand-heart-outline"></iconify-icon>
+</div>
+<p class="mt-2 text-[14px] font-semibold text-slate-800">我要招领</p>
+<p class="mt-0.5 text-[11px] leading-relaxed text-slate-400">我捡到物品，等待失主认领</p>
+</button>
+</div>
+</section>
+<!-- 第二步：填写物品信息 -->
+<section class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+<div class="flex items-center gap-2">
+<span class="w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] font-semibold flex items-center justify-center">2</span>
+<h2 class="text-[14px] font-semibold text-slate-800">填写物品信息</h2>
+</div>
+<!-- 物品名称 -->
+<div class="mt-4">
+<label class="block text-[13px] font-medium text-slate-700" for="fName">物品名称 <span class="text-rose-500">*</span></label>
+<input class="mt-2 w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-[14px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-500 focus:bg-white" id="fName" placeholder="例如：校园卡、黑色雨伞" type="text"/>
+<p class="hidden mt-1 text-[11px] text-rose-500" id="eName">请填写物品名称</p>
+</div>
+<!-- 物品类别 -->
+<div class="mt-4">
+<label class="block text-[13px] font-medium text-slate-700">物品类别 <span class="text-rose-500">*</span></label>
+<input id="fCategory" type="hidden" value=""/>
+<div class="mt-2 flex flex-wrap gap-2" id="catWrap">
+<button class="px-3 h-8 rounded-full border text-[12px] border-slate-200 bg-white text-slate-600" onclick="setCat(this)" type="button">证件卡片</button>
+<button class="px-3 h-8 rounded-full border text-[12px] border-slate-200 bg-white text-slate-600" onclick="setCat(this)" type="button">电子产品</button>
+<button class="px-3 h-8 rounded-full border text-[12px] border-slate-200 bg-white text-slate-600" onclick="setCat(this)" type="button">钥匙</button>
+<button class="px-3 h-8 rounded-full border text-[12px] border-slate-200 bg-white text-slate-600" onclick="setCat(this)" type="button">雨伞</button>
+<button class="px-3 h-8 rounded-full border text-[12px] border-slate-200 bg-white text-slate-600" onclick="setCat(this)" type="button">水杯</button>
+<button class="px-3 h-8 rounded-full border text-[12px] border-slate-200 bg-white text-slate-600" onclick="setCat(this)" type="button">书籍文具</button>
+<button class="px-3 h-8 rounded-full border text-[12px] border-slate-200 bg-white text-slate-600" onclick="setCat(this)" type="button">其他</button>
+</div>
+<p class="hidden mt-1 text-[11px] text-rose-500" id="eCategory">请选择物品类别</p>
+</div>
+<!-- 时间 -->
+<div class="mt-4">
+<label class="block text-[13px] font-medium text-slate-700" for="fTime" id="timeLabel">丢失时间 <span class="text-rose-500">*</span></label>
+<input class="mt-2 w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-[14px] text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white" id="fTime" type="datetime-local"/>
+<p class="mt-1 text-[11px] text-slate-400">例如：2026-09-27 14:30，尽量精确到小时</p>
+<p class="hidden mt-1 text-[11px] text-rose-500" id="eTime">请选择丢失时间</p>
+</div>
+<!-- 地点 -->
+<div class="mt-4">
+<label class="block text-[13px] font-medium text-slate-700" for="fPlace" id="placeLabel">丢失地点 <span class="text-rose-500">*</span></label>
+<input class="mt-2 w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-[14px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-500 focus:bg-white" id="fPlace" placeholder="例如：图书馆二楼自习区" type="text"/>
+<p class="hidden mt-1 text-[11px] text-rose-500" id="ePlace">请填写丢失地点</p>
+</div>
+<!-- 描述 -->
+<div class="mt-4">
+<label class="block text-[13px] font-medium text-slate-700" for="fDesc">物品描述 <span class="text-rose-500">*</span></label>
+<textarea class="mt-2 w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-[14px] leading-relaxed text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-500 focus:bg-white resize-none" id="fDesc" placeholder="例如：蓝色卡套，卡面贴有姓名贴，昨天下午在图书馆自习时遗落在桌面" rows="3"></textarea>
+<p class="hidden mt-1 text-[11px] text-rose-500" id="eDesc">请填写物品描述，便于他人辨认</p>
+</div>
+<!-- 联系方式 -->
+<div class="mt-4">
+<label class="block text-[13px] font-medium text-slate-700" for="fContact">联系方式 <span class="text-rose-500">*</span></label>
+<input class="mt-2 w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-[14px] text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-500 focus:bg-white" id="fContact" placeholder="手机号或微信号，例如 13800001234" type="text"/>
+<p class="mt-1 text-[11px] text-slate-400">联系方式仅对点击「联系发布者」的同学展示</p>
+<p class="hidden mt-1 text-[11px] text-rose-500" id="eContact">请填写联系方式，方便同学联系你</p>
+</div>
+</section>
+<p class="px-1 text-[11px] leading-relaxed text-slate-400">
+          发布即表示你确认信息真实。请勿填写他人隐私信息，也请勿用于商业用途。
+        </p>
+</div>
+</div>
+<footer class="shrink-0 px-4 pt-3 pb-5 bg-white border-t border-slate-100">
+<button class="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-blue-600 text-white text-[15px] font-semibold shadow-lg shadow-blue-600/20 active:bg-blue-700" onclick="submitForm()" type="button">
+<iconify-icon class="text-[20px]" icon="mdi:send-outline"></iconify-icon>发布信息
+      </button>
+</footer>
+<div class="hidden absolute left-1/2 -translate-x-1/2 bottom-28 z-50 px-4 py-2 rounded-xl bg-slate-800/90 text-white text-[12px] whitespace-nowrap" id="toast">提示</div>
+<!-- 动态样式占位（供脚本切换选中/错误配色使用） -->
+<div class="hidden border-blue-600 bg-blue-50 text-blue-600 border-slate-200 bg-white text-slate-600 border-rose-400 border-slate-200"></div>
+</div>
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/publish.js"></script>
+</body>
+</html>

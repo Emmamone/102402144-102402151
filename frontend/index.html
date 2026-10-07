@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+
+<html class="w-full h-full overflow-hidden" lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>校园失物招领 · 首页</title>
+<script src="https://modao.cc/agent-py/static/source/js/tailwindcss.js"></script>
+<script src="https://modao.cc/agent-py/static/source/js/iconify-icon.min.js"></script>
+<link rel="stylesheet" href="css/visual-theme.css"/>
+</head>
+<body class="w-full h-full m-0 overflow-hidden flex items-center justify-center bg-slate-100 text-slate-800 antialiased">
+<div id="phone-canvas" class="w-full h-full max-w-[393px] max-h-[852px] bg-[#f5f7fb] flex flex-col overflow-hidden relative">
+<!-- 顶部：产品名 + 搜索 -->
+<header id="home-hero" class="shrink-0 bg-gradient-to-b from-blue-600 to-blue-500 px-4 pt-5 pb-6">
+<div class="flex items-start justify-between">
+<div>
+<h1 class="text-[19px] font-bold text-white tracking-wide">校园失物招领</h1>
+<p class="mt-1 text-[11px] text-blue-100">让丢失的物品，尽快回到主人身边</p>
+</div>
+<div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+<iconify-icon class="text-[22px] text-white" icon="mdi:school-outline"></iconify-icon>
+</div>
+</div>
+<form class="mt-4" onsubmit="return goSearch(event)">
+<div class="flex items-center gap-2 h-11 px-3 rounded-2xl bg-white shadow-sm">
+<iconify-icon class="text-[20px] text-slate-400" icon="mdi:magnify"></iconify-icon>
+<input class="flex-1 min-w-0 h-full bg-transparent text-[14px] text-slate-700 placeholder:text-slate-300 focus:outline-none" enterkeyhint="search" id="kw" placeholder="搜索物品名称或关键词" type="text"/>
+<button class="shrink-0 h-8 px-3 rounded-xl bg-blue-600 text-white text-[13px] font-medium active:bg-blue-700" type="submit">搜索</button>
+</div>
+</form>
+</header>
+<!-- 主内容滚动区 -->
+<div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
+<!-- 分类切换 -->
+<div class="sticky top-0 z-10 bg-[#f5f7fb] px-4 pt-4 pb-2">
+<div class="flex items-center gap-2">
+<button class="px-4 h-9 rounded-full border text-[13px] font-medium bg-blue-600 text-white border-blue-600 transition" data-tab="all" onclick="filterList('all')">全部</button>
+<button class="px-4 h-9 rounded-full border text-[13px] font-medium bg-white text-slate-500 border-slate-200 transition" data-tab="seek" onclick="filterList('seek')">寻物</button>
+<button class="px-4 h-9 rounded-full border text-[13px] font-medium bg-white text-slate-500 border-slate-200 transition" data-tab="find" onclick="filterList('find')">招领</button>
+<span class="ml-auto flex items-center gap-1 text-[11px] text-slate-400">
+<iconify-icon class="text-[13px] text-blue-500" icon="mdi:sync"></iconify-icon>实时更新
+          </span>
+</div>
+</div>
+<div class="px-4 pb-5">
+<div class="flex items-center justify-between mt-2 mb-3">
+<h2 class="text-[15px] font-semibold text-slate-800 flex items-center gap-1.5">
+<iconify-icon class="text-[18px] text-blue-600" icon="mdi:clock-time-four-outline"></iconify-icon>最新信息
+          </h2>
+<span class="text-[11px] text-slate-400">共 <span class="text-blue-600 font-semibold" id="listCount">0</span> 条 · 按发布时间排序</span>
+</div>
+<!-- 列表由 js/index.js 请求 /api/items/home 后渲染；此处不得再写死数据 -->
+<div class="flex flex-col gap-3" id="list"></div>
+<p class="mt-4 text-center text-[11px] text-slate-400">只展示近期信息 · 请勿在信息中填写他人隐私</p>
+</div>
+</div>
+<!-- 底部主操作 -->
+<footer class="shrink-0 px-4 pt-3 pb-5 bg-white border-t border-slate-100">
+<a class="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-blue-600 text-white text-[15px] font-semibold shadow-lg shadow-blue-600/20 active:bg-blue-700" href="publish.html">
+<iconify-icon class="text-[20px]" icon="mdi:plus-circle-outline"></iconify-icon>发布信息
+      </a>
+</footer>
+<!-- 提示条 -->
+<div class="hidden absolute left-1/2 -translate-x-1/2 bottom-28 z-50 px-4 py-2 rounded-xl bg-slate-800/90 text-white text-[12px] whitespace-nowrap" id="toast">提示</div>
+<!-- 动态样式占位：Tailwind 运行时按源码生成样式类，卡片改为脚本渲染后，
+     卡片模板用到的类必须在这里出现，否则不会被生成（尤其 opacity-80）。 -->
+<div class="hidden rounded-2xl bg-white p-4 border border-slate-100 shadow-sm transition active:scale-[0.99] opacity-80 flex items-start gap-3 w-11 h-11 shrink-0 rounded-xl bg-blue-50 bg-emerald-50 flex items-center justify-center text-[22px] text-blue-600 text-emerald-600 min-w-0 flex-1 flex items-center gap-1.5 text-[15px] font-semibold text-slate-800 truncate px-1.5 py-0.5 rounded text-[10px] font-medium ml-auto bg-orange-50 text-orange-600 bg-amber-50 text-amber-600 bg-slate-100 text-slate-500 mt-1.5 flex items-center gap-3 text-[11px] text-slate-400 gap-0.5 text-[13px] leading-relaxed text-slate-500 line-clamp-2"></div>
+</div>
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/index.js"></script>
+</body>
+</html>

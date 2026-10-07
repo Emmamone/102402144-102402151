@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html class="w-full h-full overflow-hidden" lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>校园失物招领 · 搜索结果</title>
+<script src="https://modao.cc/agent-py/static/source/js/tailwindcss.js"></script>
+<script src="https://modao.cc/agent-py/static/source/js/iconify-icon.min.js"></script>
+<link rel="stylesheet" href="css/visual-theme.css"/>
+</head>
+<body class="w-full h-full m-0 overflow-hidden flex items-center justify-center bg-slate-100 text-slate-800 antialiased">
+<div id="phone-canvas" class="w-full h-full max-w-[393px] max-h-[852px] bg-[#f5f7fb] flex flex-col overflow-hidden relative">
+<!-- 顶部：可编辑搜索框 + 筛选 -->
+<header class="shrink-0 bg-white border-b border-slate-100 px-3 pt-4 pb-3">
+<div class="flex items-center gap-1">
+<a class="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-slate-500 active:bg-slate-100" href="index.html">
+<iconify-icon class="text-[24px]" icon="mdi:chevron-left"></iconify-icon>
+</a>
+<form class="flex-1 min-w-0" onsubmit="return onSubmitSearch(event)">
+<div class="flex items-center gap-2 h-10 px-3 rounded-xl bg-slate-100">
+<iconify-icon class="text-[18px] text-slate-400" icon="mdi:magnify"></iconify-icon>
+<input class="flex-1 min-w-0 bg-transparent text-[14px] text-slate-700 placeholder:text-slate-300 focus:outline-none" enterkeyhint="search" id="kw" placeholder="搜索物品名称或关键词" type="text" value="校园卡"/>
+<button class="shrink-0 h-7 px-2.5 rounded-lg bg-blue-600 text-white text-[12px] font-medium active:bg-blue-700" type="submit">搜索</button>
+</div>
+</form>
+</div>
+<div class="mt-3 flex items-center gap-2 pl-1">
+<button class="px-4 h-8 rounded-full border text-[12px] font-medium bg-blue-600 text-white border-blue-600 transition" data-tab="all" onclick="setFilter('all')">全部</button>
+<button class="px-4 h-8 rounded-full border text-[12px] font-medium bg-white text-slate-500 border-slate-200 transition" data-tab="seek" onclick="setFilter('seek')">寻物</button>
+<button class="px-4 h-8 rounded-full border text-[12px] font-medium bg-white text-slate-500 border-slate-200 transition" data-tab="find" onclick="setFilter('find')">招领</button>
+</div>
+</header>
+<!-- 结果滚动区 -->
+<div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
+<div class="px-4 pt-4 pb-5">
+<p class="text-[12px] text-slate-400">
+          关键词「<span class="text-blue-600 font-medium" id="kwEcho">校园卡</span>」共
+          <span class="text-blue-600 font-semibold" id="resultCount">2</span> 条结果
+        </p>
+<div class="mt-3" id="resultList">
+<div class="flex flex-col gap-3">
+<!-- 校园卡 / 寻物 -->
+<a class="rounded-2xl bg-white p-4 border border-slate-100 shadow-sm transition active:scale-[0.99]" data-id="1" data-keywords="校园卡 证件卡片 蓝色卡套 图书馆 自习区 寻物 丢了" data-result="seek" href="detail.html?id=1">
+<div class="flex items-start gap-3">
+<div class="w-11 h-11 shrink-0 rounded-xl bg-blue-50 flex items-center justify-center">
+<iconify-icon class="text-[22px] text-blue-600" icon="mdi:card-account-details-outline"></iconify-icon>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<h3 class="min-w-0 text-[15px] font-semibold text-slate-800 truncate">校园卡</h3>
+<span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600">寻物</span>
+<span class="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 text-orange-600" data-status="">寻找中</span>
+</div>
+<div class="mt-1.5 flex items-center gap-3 text-[11px] text-slate-400">
+<span class="shrink-0 flex items-center gap-0.5"><iconify-icon class="text-[13px]" icon="mdi:clock-outline"></iconify-icon>今天 08:20</span>
+<span class="flex items-center gap-0.5 min-w-0">
+<iconify-icon class="text-[13px] shrink-0" icon="mdi:map-marker-outline"></iconify-icon>
+<span class="truncate">图书馆二楼自习区</span>
+</span>
+</div>
+<p class="mt-1.5 text-[12px] leading-relaxed text-slate-500 line-clamp-2">蓝色卡套，卡面右下角贴有姓名贴，昨天下午在图书馆自习时遗落在桌面。</p>
+</div>
+</div>
+</a>
+<!-- 校园卡 / 招领 -->
+<a class="rounded-2xl bg-white p-4 border border-slate-100 shadow-sm transition active:scale-[0.99]" data-id="7" data-keywords="校园卡 证件卡片 第三教学楼 教室 抽屉 招领 捡到" data-result="find" href="detail.html?id=7">
+<div class="flex items-start gap-3">
+<div class="w-11 h-11 shrink-0 rounded-xl bg-emerald-50 flex items-center justify-center">
+<iconify-icon class="text-[22px] text-emerald-600" icon="mdi:card-account-details-outline"></iconify-icon>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<h3 class="min-w-0 text-[15px] font-semibold text-slate-800 truncate">校园卡</h3>
+<span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-600">招领</span>
+<span class="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600" data-status="">待认领</span>
+</div>
+<div class="mt-1.5 flex items-center gap-3 text-[11px] text-slate-400">
+<span class="shrink-0 flex items-center gap-0.5"><iconify-icon class="text-[13px]" icon="mdi:clock-outline"></iconify-icon>今天 10:15</span>
+<span class="flex items-center gap-0.5 min-w-0">
+<iconify-icon class="text-[13px] shrink-0" icon="mdi:map-marker-outline"></iconify-icon>
+<span class="truncate">第三教学楼 B202</span>
+</span>
+</div>
+<p class="mt-1.5 text-[12px] leading-relaxed text-slate-500 line-clamp-2">课间在教室抽屉里捡到一张校园卡，卡面姓名有磨损，请本人持学生证到图书馆前台认领。</p>
+</div>
+</div>
+</a>
+<!-- 宿舍钥匙 / 寻物 -->
+<a class="rounded-2xl bg-white p-4 border border-slate-100 shadow-sm transition active:scale-[0.99]" data-id="5" data-keywords="钥匙 宿舍钥匙 蓝色钥匙扣 校徽 体育馆 篮球场 寻物 丢了" data-result="seek" href="detail.html?id=5">
+<div class="flex items-start gap-3">
+<div class="w-11 h-11 shrink-0 rounded-xl bg-blue-50 flex items-center justify-center">
+<iconify-icon class="text-[22px] text-blue-600" icon="mdi:key-variant"></iconify-icon>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<h3 class="min-w-0 text-[15px] font-semibold text-slate-800 truncate">宿舍钥匙</h3>
+<span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600">寻物</span>
+<span class="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 text-orange-600" data-status="">寻找中</span>
+</div>
+<div class="mt-1.5 flex items-center gap-3 text-[11px] text-slate-400">
+<span class="shrink-0 flex items-center gap-0.5"><iconify-icon class="text-[13px]" icon="mdi:clock-outline"></iconify-icon>09-25 12:10</span>
+<span class="flex items-center gap-0.5 min-w-0">
+<iconify-icon class="text-[13px] shrink-0" icon="mdi:map-marker-outline"></iconify-icon>
+<span class="truncate">体育馆篮球场</span>
+</span>
+</div>
+<p class="mt-1.5 text-[12px] leading-relaxed text-slate-500 line-clamp-2">两把钥匙配一只蓝色钥匙扣，上面挂着校徽挂件，打完球后发现钥匙不见了。</p>
+</div>
+</div>
+</a>
+<!-- 白色保温杯 / 招领 -->
+<a class="rounded-2xl bg-white p-4 border border-slate-100 shadow-sm transition active:scale-[0.99]" data-id="3" data-keywords="水杯 保温杯 白色 食堂 考研加油 招领 捡到" data-result="find" href="detail.html?id=3">
+<div class="flex items-start gap-3">
+<div class="w-11 h-11 shrink-0 rounded-xl bg-emerald-50 flex items-center justify-center">
+<iconify-icon class="text-[22px] text-emerald-600" icon="mdi:cup-outline"></iconify-icon>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<h3 class="min-w-0 text-[15px] font-semibold text-slate-800 truncate">白色保温杯</h3>
+<span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-600">招领</span>
+<span class="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600" data-status="">待认领</span>
+</div>
+<div class="mt-1.5 flex items-center gap-3 text-[11px] text-slate-400">
+<span class="shrink-0 flex items-center gap-0.5"><iconify-icon class="text-[13px]" icon="mdi:clock-outline"></iconify-icon>昨天 18:05</span>
+<span class="flex items-center gap-0.5 min-w-0">
+<iconify-icon class="text-[13px] shrink-0" icon="mdi:map-marker-outline"></iconify-icon>
+<span class="truncate">第二食堂一楼</span>
+</span>
+</div>
+<p class="mt-1.5 text-[12px] leading-relaxed text-slate-500 line-clamp-2">杯身贴着「考研加油」贴纸，容量 500ml，吃完饭后落在了餐桌上。</p>
+</div>
+</div>
+</a>
+<!-- 黑色雨伞 / 招领 -->
+<a class="rounded-2xl bg-white p-4 border border-slate-100 shadow-sm transition active:scale-[0.99]" data-id="2" data-keywords="雨伞 黑色 小熊 教学楼 教室 招领 捡到" data-result="find" href="detail.html?id=2">
+<div class="flex items-start gap-3">
+<div class="w-11 h-11 shrink-0 rounded-xl bg-emerald-50 flex items-center justify-center">
+<iconify-icon class="text-[22px] text-emerald-600" icon="mdi:umbrella-outline"></iconify-icon>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<h3 class="min-w-0 text-[15px] font-semibold text-slate-800 truncate">黑色雨伞</h3>
+<span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-600">招领</span>
+<span class="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600" data-status="">待认领</span>
+</div>
+<div class="mt-1.5 flex items-center gap-3 text-[11px] text-slate-400">
+<span class="shrink-0 flex items-center gap-0.5"><iconify-icon class="text-[13px]" icon="mdi:clock-outline"></iconify-icon>今天 09:40</span>
+<span class="flex items-center gap-0.5 min-w-0">
+<iconify-icon class="text-[13px] shrink-0" icon="mdi:map-marker-outline"></iconify-icon>
+<span class="truncate">教学楼A座 201</span>
+</span>
+</div>
+<p class="mt-1.5 text-[12px] leading-relaxed text-slate-500 line-clamp-2">伞骨完好，伞面带卡通小熊图案，下课后在教室最后一排捡到。</p>
+</div>
+</div>
+</a>
+<!-- 无线耳机 / 寻物 / 已解决 -->
+<a class="rounded-2xl bg-white p-4 border border-slate-100 shadow-sm transition active:scale-[0.99] opacity-80" data-id="4" data-keywords="耳机 无线耳机 白色 宿舍区 3号楼 寻物 丢了" data-result="seek" href="detail.html?id=4">
+<div class="flex items-start gap-3">
+<div class="w-11 h-11 shrink-0 rounded-xl bg-blue-50 flex items-center justify-center">
+<iconify-icon class="text-[22px] text-blue-600" icon="mdi:headphones"></iconify-icon>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<h3 class="min-w-0 text-[15px] font-semibold text-slate-800 truncate">无线耳机</h3>
+<span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600">寻物</span>
+<span class="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-600" data-status="">已解决</span>
+</div>
+<div class="mt-1.5 flex items-center gap-3 text-[11px] text-slate-400">
+<span class="shrink-0 flex items-center gap-0.5"><iconify-icon class="text-[13px]" icon="mdi:clock-outline"></iconify-icon>昨天 15:30</span>
+<span class="flex items-center gap-0.5 min-w-0">
+<iconify-icon class="text-[13px] shrink-0" icon="mdi:map-marker-outline"></iconify-icon>
+<span class="truncate">宿舍区 3 号楼</span>
+</span>
+</div>
+<p class="mt-1.5 text-[12px] leading-relaxed text-slate-500 line-clamp-2">白色充电盒，右耳外壳有细小划痕，晚上锻炼回来发现不见了，已找回。</p>
+</div>
+</div>
+</a>
+<!-- 帆布笔袋 / 招领 -->
+<a class="rounded-2xl bg-white p-4 border border-slate-100 shadow-sm transition active:scale-[0.99]" data-id="6" data-keywords="笔袋 帆布 文具 图书馆 阅览室 招领 捡到" data-result="find" href="detail.html?id=6">
+<div class="flex items-start gap-3">
+<div class="w-11 h-11 shrink-0 rounded-xl bg-emerald-50 flex items-center justify-center">
+<iconify-icon class="text-[22px] text-emerald-600" icon="mdi:bag-personal-outline"></iconify-icon>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<h3 class="min-w-0 text-[15px] font-semibold text-slate-800 truncate">帆布笔袋</h3>
+<span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-600">招领</span>
+<span class="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600" data-status="">待认领</span>
+</div>
+<div class="mt-1.5 flex items-center gap-3 text-[11px] text-slate-400">
+<span class="shrink-0 flex items-center gap-0.5"><iconify-icon class="text-[13px]" icon="mdi:clock-outline"></iconify-icon>09-24 20:15</span>
+<span class="flex items-center gap-0.5 min-w-0">
+<iconify-icon class="text-[13px] shrink-0" icon="mdi:map-marker-outline"></iconify-icon>
+<span class="truncate">图书馆四楼阅览室</span>
+</span>
+</div>
+<p class="mt-1.5 text-[12px] leading-relaxed text-slate-500 line-clamp-2">灰色帆布笔袋，里面有一支黑色中性笔和一把钢尺，已交到图书馆前台。</p>
+</div>
+</div>
+</a>
+<!-- 学生证 / 招领 -->
+<a class="rounded-2xl bg-white p-4 border border-slate-100 shadow-sm transition active:scale-[0.99]" data-id="8" data-keywords="学生证 证件卡片 大学生活动中心 招领 捡到" data-result="find" href="detail.html?id=8">
+<div class="flex items-start gap-3">
+<div class="w-11 h-11 shrink-0 rounded-xl bg-emerald-50 flex items-center justify-center">
+<iconify-icon class="text-[22px] text-emerald-600" icon="mdi:badge-account-horizontal-outline"></iconify-icon>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<h3 class="min-w-0 text-[15px] font-semibold text-slate-800 truncate">学生证</h3>
+<span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-600">招领</span>
+<span class="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600" data-status="">待认领</span>
+</div>
+<div class="mt-1.5 flex items-center gap-3 text-[11px] text-slate-400">
+<span class="shrink-0 flex items-center gap-0.5"><iconify-icon class="text-[13px]" icon="mdi:clock-outline"></iconify-icon>09-23 16:40</span>
+<span class="flex items-center gap-0.5 min-w-0">
+<iconify-icon class="text-[13px] shrink-0" icon="mdi:map-marker-outline"></iconify-icon>
+<span class="truncate">大学生活动中心</span>
+</span>
+</div>
+<p class="mt-1.5 text-[12px] leading-relaxed text-slate-500 line-clamp-2">外套透明保护套，内页姓名首字为「李」，社团招新结束后在门口台阶上捡到。</p>
+</div>
+</div>
+</a>
+</div>
+</div>
+<!-- 无结果 -->
+<div class="hidden" id="emptyState">
+<div class="flex flex-col items-center justify-center px-6 py-16 text-center">
+<div class="w-16 h-16 rounded-full bg-white border border-slate-100 flex items-center justify-center">
+<iconify-icon class="text-[30px] text-slate-300" icon="mdi:file-search-outline"></iconify-icon>
+</div>
+<p class="mt-4 text-[14px] font-medium text-slate-600">没有找到相关信息，试试其他关键词</p>
+<p class="mt-1.5 text-[12px] text-slate-400">换个说法，或点击下方常见关键词重新搜索</p>
+<div class="mt-4 flex flex-wrap justify-center gap-2">
+<button class="px-3 h-8 rounded-full border border-slate-200 bg-white text-[12px] text-slate-600 active:bg-slate-50" onclick="quickSearch('校园卡')">校园卡</button>
+<button class="px-3 h-8 rounded-full border border-slate-200 bg-white text-[12px] text-slate-600 active:bg-slate-50" onclick="quickSearch('钥匙')">钥匙</button>
+<button class="px-3 h-8 rounded-full border border-slate-200 bg-white text-[12px] text-slate-600 active:bg-slate-50" onclick="quickSearch('水杯')">水杯</button>
+<button class="px-3 h-8 rounded-full border border-slate-200 bg-white text-[12px] text-slate-600 active:bg-slate-50" onclick="quickSearch('雨伞')">雨伞</button>
+<button class="px-3 h-8 rounded-full border border-slate-200 bg-white text-[12px] text-slate-600 active:bg-slate-50" onclick="quickSearch('耳机')">耳机</button>
+</div>
+</div>
+</div>
+<p class="mt-4 text-center text-[11px] text-slate-400">结果按发布时间从新到旧排列</p>
+</div>
+</div>
+<!-- 动态样式占位（供脚本切换状态配色使用） -->
+<div class="hidden bg-slate-100 text-slate-500 bg-orange-50 text-orange-600 bg-amber-50 text-amber-600 bg-emerald-50 text-emerald-600 bg-blue-50 text-blue-600"></div>
+</div>
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/search.js"></script>
+</body>
+</html>

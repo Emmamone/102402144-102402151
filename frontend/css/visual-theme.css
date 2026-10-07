@@ -1,0 +1,139 @@
+/* 校园失物招领 —— 唯一的主题样式文件。
+ *
+ * 内容取自各页面原先内联的 <style> 块（5 份字节相同的副本），以**内联版为准**
+ * ——它是实际生效的那一份；仓库里原有的 visual-theme.css 在 #phone-canvas 尺寸
+ * 写法上与之已有分叉，未采用。
+ *
+ * 注意：主题通过**覆盖 Tailwind 类名**实现配色，因此 HTML 里写的类名与最终颜色
+ * 不一致（例如写着 bg-blue-600，渲染出来是朱砂橙 #e86143）。改配色请改这里的
+ * CSS 变量，不要按类名的字面含义去改 HTML。
+ *
+ * 另有一条结构性依赖：卡片样式由 `#list > a, #resultList [data-result]` 选中，
+ * 所以首页卡片必须是 #list 的直接子 <a>、搜索页卡片必须带 data-result 属性。
+ * 丢了这两个前提不会报错，只会让卡片静默失去左侧金线与圆角。
+ */
+
+body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+#phone-canvas { width: min(393px, 100vw, calc(100vh * 393 / 852)); height: auto; max-width: none; max-height: none; aspect-ratio: 393 / 852; flex: 0 0 auto; }
+
+/* Campus Lost & Found — mobile editorial art direction */
+:root {
+  --paper: #f6f3eb;
+  --paper-deep: #ebe5d8;
+  --ink: #182e2a;
+  --forest: #173f37;
+  --forest-light: #28584d;
+  --muted: #7e8981;
+  --line: #e8e2d6;
+  --accent: #e86143;
+  --accent-dark: #c84932;
+  --accent-soft: #fff0e9;
+  --sage: #e8f0e8;
+  --sage-ink: #3d7054;
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; min-height: 100%; }
+body {
+  margin: 0;
+  color: var(--ink) !important;
+  background: #e4e5df !important;
+  font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+}
+#phone-canvas {
+  width: 393px !important;
+  height: 852px !important;
+  max-width: min(100vw, 393px) !important;
+  max-height: min(100vh, 852px) !important;
+  aspect-ratio: 393 / 852;
+  flex: 0 1 393px;
+  position: relative;
+  overflow: hidden;
+  background: var(--paper) !important;
+  box-shadow: 0 28px 90px rgba(23, 47, 40, .20), 0 3px 10px rgba(23, 47, 40, .08);
+}
+#phone-canvas > div.flex-1 { background: var(--paper) !important; }
+#phone-canvas .bg-white { background-color: #fffdf8 !important; }
+#phone-canvas .text-slate-800, #phone-canvas .text-slate-700 { color: var(--ink) !important; }
+#phone-canvas .text-slate-600 { color: #55665f !important; }
+#phone-canvas .text-slate-500 { color: #697971 !important; }
+#phone-canvas .text-slate-400 { color: var(--muted) !important; }
+#phone-canvas .text-slate-300 { color: #aeb6ad !important; }
+#phone-canvas .border-slate-100, #phone-canvas .border-slate-200 { border-color: var(--line) !important; }
+#phone-canvas .bg-slate-50, #phone-canvas .bg-\[\#f5f7fb\] { background-color: var(--paper) !important; }
+#phone-canvas .bg-blue-600 { background-color: var(--accent) !important; }
+#phone-canvas .bg-blue-700 { background-color: var(--accent-dark) !important; }
+#phone-canvas .text-blue-600, #phone-canvas .text-blue-500 { color: var(--accent-dark) !important; }
+#phone-canvas .text-blue-700 { color: #9f3929 !important; }
+#phone-canvas .bg-blue-50 { background-color: var(--accent-soft) !important; }
+#phone-canvas .border-blue-600, #phone-canvas .border-blue-200 { border-color: #efb09d !important; }
+#phone-canvas .bg-emerald-50 { background-color: var(--sage) !important; }
+#phone-canvas .text-emerald-600 { color: var(--sage-ink) !important; }
+#phone-canvas .bg-amber-50 { background-color: #fbf1d8 !important; }
+#phone-canvas .text-amber-600 { color: #9b6c14 !important; }
+#phone-canvas .bg-orange-50 { background-color: #fff0e7 !important; }
+#phone-canvas .text-orange-600 { color: #b94f32 !important; }
+#phone-canvas .rounded-2xl { border-radius: 17px !important; }
+#phone-canvas .rounded-xl { border-radius: 13px !important; }
+#phone-canvas .shadow-sm { box-shadow: 0 3px 12px rgba(38, 48, 39, .045) !important; }
+#phone-canvas .shadow-lg { box-shadow: 0 8px 20px rgba(200, 73, 50, .17) !important; }
+
+/* Front page: a dark green field-note cover, rather than a generic gradient. */
+#home-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 23px 19px 20px !important;
+  color: #fffaf0;
+  background: var(--forest) !important;
+  border-bottom: 4px solid #e7b35b;
+}
+#home-hero::after {
+  content: "拾";
+  position: absolute;
+  z-index: -1;
+  right: 9px;
+  top: -31px;
+  color: rgba(240, 225, 184, .10);
+  font-family: serif;
+  font-size: 168px;
+  font-weight: 800;
+  line-height: 1;
+  transform: rotate(9deg);
+}
+#home-hero > * { position: relative; z-index: 1; }
+#home-hero h1 { color: #fffaf0 !important; font-family: "Songti SC", "Noto Serif SC", serif !important; font-size: 23px !important; letter-spacing: .04em !important; }
+#home-hero h1::before { content: "拾 · "; color: #f1bd62; }
+#home-hero p { color: #d5e1d6 !important; letter-spacing: .04em; }
+#home-hero .w-10 { background: rgba(241, 189, 98, .17) !important; color: #f4c978 !important; }
+#home-hero form > div { border: 1px solid rgba(255,255,255,.28); border-radius: 12px !important; box-shadow: 0 5px 18px rgba(5, 25, 20, .16) !important; }
+#home-hero form button { border-radius: 9px !important; }
+
+/* Compact, tactile controls and editorial information cards. */
+#phone-canvas footer { padding-bottom: max(18px, env(safe-area-inset-bottom)) !important; border-color: var(--line) !important; background: rgba(255,253,248,.96) !important; }
+#phone-canvas footer a, #phone-canvas footer button { min-height: 50px; border-radius: 13px !important; font-weight: 700 !important; letter-spacing: .025em; }
+#list > a, #resultList [data-result] {
+  border: 1px solid var(--line) !important;
+  border-left: 3px solid #d9a75c !important;
+  border-radius: 14px !important;
+  background: #fffdf8 !important;
+  box-shadow: 0 3px 12px rgba(38,48,39,.04) !important;
+}
+#list > a:active, #resultList [data-result]:active { transform: scale(.985); }
+#phone-canvas button { transition: transform .15s ease, background-color .15s ease; }
+#phone-canvas button:active { transform: scale(.97); }
+#phone-canvas input, #phone-canvas textarea {
+  border-radius: 11px !important;
+  border-color: #e3ded2 !important;
+  background: #fbf9f3 !important;
+  color: var(--ink) !important;
+}
+#phone-canvas input:focus, #phone-canvas textarea:focus { border-color: #d88c68 !important; box-shadow: 0 0 0 3px rgba(232,97,67,.10); }
+#phone-canvas [data-tab] { border-radius: 9px !important; }
+#phone-canvas section.bg-white { border: 1px solid var(--line) !important; border-radius: 14px !important; }
+#phone-canvas .sticky { border-bottom: 1px solid var(--line); }
+#phone-canvas [id^="e"] { color: #bb4635 !important; }
+#phone-canvas #toast { border-radius: 10px !important; background: var(--forest) !important; box-shadow: 0 8px 24px rgba(23,63,55,.22); }
+#phone-canvas #emptyState .w-16 { border: 1px dashed #d7cbbb !important; background: #fffdf8 !important; }
+#phone-canvas .text-rose-500 { color: #c84c36 !important; }

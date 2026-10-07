@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+
+<html class="w-full h-full overflow-hidden" lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>校园失物招领 · 信息详情</title>
+<script src="https://modao.cc/agent-py/static/source/js/tailwindcss.js"></script>
+<script src="https://modao.cc/agent-py/static/source/js/iconify-icon.min.js"></script>
+<link rel="stylesheet" href="css/visual-theme.css"/>
+</head>
+<body class="w-full h-full m-0 overflow-hidden flex items-center justify-center bg-slate-100 text-slate-800 antialiased">
+<div id="phone-canvas" class="w-full h-full max-w-[393px] max-h-[852px] bg-[#f5f7fb] flex flex-col overflow-hidden relative">
+<header class="shrink-0 h-14 px-3 flex items-center gap-1 bg-white border-b border-slate-100">
+<a class="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-slate-500 active:bg-slate-100" href="index.html">
+<iconify-icon class="text-[24px]" icon="mdi:chevron-left"></iconify-icon>
+</a>
+<h1 class="text-[16px] font-semibold text-slate-800">信息详情</h1>
+<span class="ml-auto text-[11px] text-slate-400">编号 <span class="text-slate-500" id="dCode">LF-001</span></span>
+</header>
+<div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
+<div class="flex flex-col gap-3 p-4">
+<!-- 概览 -->
+<section class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+<div class="flex items-start gap-3">
+<div class="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 bg-blue-50" id="dIconBox">
+<iconify-icon class="text-[28px] text-blue-600" icon="mdi:card-account-details-outline" id="dIcon"></iconify-icon>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-2">
+<h1 class="min-w-0 text-[17px] font-bold text-slate-800 truncate" id="dName">校园卡</h1>
+<span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600" id="dType">寻物</span>
+</div>
+<div class="mt-2 flex items-center gap-2">
+<span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium bg-orange-50 text-orange-600" id="dStatus">寻找中</span>
+<span class="min-w-0 text-[11px] text-slate-400 truncate" id="dPublish">发布于 —</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 信息明细 -->
+<section class="bg-white rounded-2xl px-4 border border-slate-100 shadow-sm">
+<div class="flex items-center py-3 border-b border-slate-50">
+<span class="w-[92px] shrink-0 text-[13px] text-slate-400">物品类别</span>
+<span class="text-[13px] font-medium text-slate-700" id="dCategory">—</span>
+</div>
+<div class="flex items-center py-3 border-b border-slate-50">
+<span class="w-[92px] shrink-0 text-[13px] text-slate-400" id="dTimeLabel">丢失时间</span>
+<span class="text-[13px] font-medium text-slate-700" id="dTime">—</span>
+</div>
+<div class="flex items-center py-3 border-b border-slate-50">
+<span class="w-[92px] shrink-0 text-[13px] text-slate-400">地点</span>
+<span class="text-[13px] font-medium text-slate-700" id="dPlace">—</span>
+</div>
+<div class="flex items-center py-3">
+<span class="w-[92px] shrink-0 text-[13px] text-slate-400">发布时间</span>
+<span class="text-[13px] font-medium text-slate-700" id="dPublishRow">—</span>
+</div>
+</section>
+<!-- 物品描述 -->
+<section class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+<h2 class="flex items-center gap-1.5 text-[14px] font-semibold text-slate-800">
+<iconify-icon class="text-[17px] text-blue-600" icon="mdi:text-box-outline"></iconify-icon>物品描述
+          </h2>
+<p class="mt-2 text-[13px] leading-relaxed text-slate-600" id="dDesc">—</p>
+</section>
+<!-- 联系方式 -->
+<section class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+<h2 class="flex items-center gap-1.5 text-[14px] font-semibold text-slate-800">
+<iconify-icon class="text-[17px] text-blue-600" icon="mdi:account-circle-outline"></iconify-icon>联系方式
+          </h2>
+<div class="mt-3 flex items-center gap-3">
+<div class="w-10 h-10 shrink-0 rounded-full bg-blue-50 text-blue-600 text-[14px] font-semibold flex items-center justify-center" id="dAvatar">张</div>
+<div class="min-w-0 flex-1">
+<p class="text-[13px] font-medium text-slate-700 truncate" id="dPublisher">—</p>
+<p class="mt-0.5 text-[12px] text-slate-400 truncate" id="dContactMask">—</p>
+</div>
+</div>
+<div class="mt-3" id="dContactBtnWrap">
+<button class="flex items-center justify-center gap-1.5 w-full h-11 rounded-xl bg-blue-600 text-white text-[14px] font-semibold active:bg-blue-700" onclick="revealContact()" type="button">
+<iconify-icon class="text-[18px]" icon="mdi:phone-outline"></iconify-icon>联系发布者
+            </button>
+</div>
+<div class="hidden mt-3 rounded-xl bg-blue-50 p-3" id="dContactRevealed">
+<p class="text-[12px] font-medium text-blue-700">完整联系方式</p>
+<p class="mt-1 text-[15px] font-bold tracking-wide text-blue-700" id="dContactFull">—</p>
+<p class="mt-2 flex items-start gap-1 text-[11px] leading-relaxed text-blue-500">
+<iconify-icon class="text-[14px] mt-[1px] shrink-0" icon="mdi:shield-lock-outline"></iconify-icon>
+              联系时请先说明物品特征，避免误领；请勿将对方联系方式转发到其他群聊。
+            </p>
+</div>
+</section>
+<!-- 发布者操作 -->
+<section class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+<h2 class="flex items-center gap-1.5 text-[14px] font-semibold text-slate-800">
+<iconify-icon class="text-[17px] text-blue-600" icon="mdi:cog-outline"></iconify-icon>发布者操作
+          </h2>
+<p class="mt-2 text-[12px] leading-relaxed text-slate-400">
+            如果你是这条信息的发布者，在物品找回或归还后，可将状态更新为「已解决」，让列表保持准确。
+          </p>
+<button class="flex items-center justify-center gap-1.5 w-full h-11 mt-3 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 text-[14px] font-semibold active:bg-blue-100" id="dResolveBtn" onclick="markResolved()" type="button">
+<iconify-icon class="text-[18px]" icon="mdi:check-decagram-outline"></iconify-icon>
+<span id="dResolveText">标记为已找回</span>
+</button>
+</section>
+<a class="flex items-center justify-center gap-1.5 h-11 rounded-xl border border-slate-200 bg-white text-[14px] font-medium text-slate-600 active:bg-slate-50" href="index.html">
+<iconify-icon class="text-[18px]" icon="mdi:format-list-bulleted"></iconify-icon>返回信息列表
+        </a>
+<p class="mt-1 mb-2 text-center text-[11px] text-slate-400">校园失物招领 · 请文明认领，互相帮助</p>
+</div>
+</div>
+<div class="hidden absolute left-1/2 -translate-x-1/2 bottom-16 z-50 px-4 py-2 rounded-xl bg-slate-800/90 text-white text-[12px] whitespace-nowrap" id="toast">提示</div>
+<!-- 动态样式占位（供脚本切换类型 / 状态 / 按钮配色使用） -->
+<div class="hidden bg-emerald-50 text-emerald-600 bg-amber-50 text-amber-600 bg-slate-100 text-slate-400 border-blue-200 border-slate-200"></div>
+</div>
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/detail.js"></script>
+</body>
+</html>
