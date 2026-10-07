@@ -21,7 +21,7 @@
 <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
 <div class="flex flex-col gap-3 p-4">
 <!-- 信息详情页：单条信息的完整字段 + 联系方式展开 + 标记已解决。
-     当前数据来自本页内嵌数据与 localStorage 的 ?id=new（阶段 3/4 改为 GET /api/items/{id}），渲染见 js/detail.js -->
+     数据来自 GET /api/items/{id}，标记已解决走 POST /api/items/{id}/resolve —— 见 js/detail.js -->
 <!-- 概览 -->
 <section class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
 <div class="flex items-start gap-3">

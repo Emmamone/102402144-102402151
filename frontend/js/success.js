@@ -2,15 +2,12 @@
  *
  * 数据来自 **GET /api/items/{id}**（阶段 4 改造完成）：`?id` 由发布页在跳转时带上。
  *
- * 取值优先级（前两级是过渡状态，见下）：
+ * 取值：
  *   1. URL 里的 `?id` → 向服务端查详情（正常路径）
- *   2. localStorage 的 `campusNewItem` → **过渡分支**：publish.js 还没改成
- *      "提交到接口后带着新 id 跳转"（任务 ④），在那之前发布页跳过来是不带 `?id` 的。
- *      不保留这一级的话，刚发布完的人会看到一份跟自己的信息无关的假摘要——
- *      那比"暂时多一个分支"糟得多。④ 落地后连同它一起删除。
- *   3. 写死的兜底摘要 → 直接打开本页（没带 `?id`、本机也没发布过）时用，保证不空白。
+ *   2. 写死的兜底摘要 → 直接打开本页（没带 `?id`）或查询失败时用，保证不空白。
  *
- * 随改造删除的旧机制：把 localStorage 当作唯一数据源。
+ * 随改造删除的旧机制：把 localStorage 当作数据源——包括发布页与本页之间用
+ * `campusNewItem` 临时传递的那一级过渡分支（发布页已改为带真实 id 跳转）。
  */
 
 //: 无 `?id` 且本机没发布过时展示的兜底摘要。
@@ -55,20 +52,15 @@ function renderSummary(item, linkId) {
 }
 
 /**
- * 没有 `?id`（或按 `?id` 查询失败）时的退路。
+ * 没有 `?id`（或按 `?id` 查询失败）时的退路：直接用写死的兜底摘要。
  *
  * @returns {void}
  *
- * 先看本机有没有刚发布的那条（过渡分支，任务 ④ 完成后删除），再没有才用写死的兜底。
+ * 兜底只是"别让页面空白"的展示数据，背后没有真实记录；「查看详情」因此指向 1 号
+ * ——兜底内容本来就是照着 1 号抄的，指过去不矛盾。
  */
 function renderFallback() {
-  var saved = null;
-  try {
-    saved = JSON.parse(localStorage.getItem('campusNewItem') || 'null');
-  } catch (err) {
-    saved = null;
-  }
-  renderSummary(saved || FALLBACK_SUMMARY, null);
+  renderSummary(FALLBACK_SUMMARY, null);
 }
 
 /**

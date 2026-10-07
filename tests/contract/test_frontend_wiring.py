@@ -10,6 +10,11 @@
 
 对应《代码规范》第 3.8 节里"前端遗留物扫描"那条待办——以前靠人工 grep，
 现在固化进测试层，随 CI 一起跑。
+
+**一个反复踩到的坑**：断言"某个函数/字符串已经被删掉"时，**不要查裸词**。
+文件头注释里往往会写"随改造删除了 xxx"，裸词会被自己的注释绊倒。
+统一改成查**定义或调用**的形式（如 ``insertLocalPost\\s*\\(``、
+``setItem\\(\\s*['\"]campus``），只匹配代码、不匹配说明。
 """
 
 from __future__ import annotations
@@ -22,27 +27,26 @@ import pytest
 FRONTEND = Path(__file__).resolve().parent.parent.parent / "frontend"
 PAGES = ["index", "search", "detail", "publish", "success"]
 
-#: 各页"是否已接到后端接口"的当前状态。
-#: **这就是迁移进度本身**，写死在这里是为了让"改了代码忘了改记录"立刻暴露。
-#: 页面完成改造（阶段 3 / 4）后，必须同步改这张表，否则下面的测试会失败。
+#: 各页"是否已接到后端接口"。阶段 4 之后**全部为 True**，这张表就成了回归保护：
+#: 哪天有人新增页面却忘了接接口，或者把某个页面的脚本改回写死数据，这里会失败。
+#: 改造期间它是迁移进度的记录（逐页从 False 改成 True）。
 WIRED = {
     "index": True,      # 阶段 2 / 3 已接
     "search": True,     # 阶段 3 已接
-    "detail": True,     # 阶段 3 已接
-    "publish": False,   # 待阶段 4
+    "detail": True,     # 阶段 3 读 + 阶段 4 写
+    "publish": True,    # 阶段 4 已接
     "success": True,    # 阶段 4 已接（按 ?id 查询）
 }
 
-#: 各页**是否还允许**出现 localStorage。
-#: 已经接到接口的页面不该再依赖本地存储；detail 是唯一的例外，它的两处
-#: （`?id=new` 过渡分支、标记已解决的写路径）都随阶段 4 一并移除——
-#: 移除后把这里的 True 改成 False，测试会盯着这件事。
+#: 各页**是否还允许**出现 localStorage。阶段 4 之后**全部为 False**：
+#: 五个页面都只通过接口读写，localStorage 那套（`campusNewItem` / `campusResolved`）
+#: 已彻底退场。改造期间它记录的是"哪几页还欠清理"。
 LOCAL_STORAGE_ALLOWED = {
-    "index": False,
+    "index": False,     # 阶段 2 / 3 已清理
     "search": False,    # 阶段 3 已清理
-    "detail": True,     # 阶段 4 移除
-    "publish": True,    # 阶段 4 移除
-    "success": True,    # 过渡分支：?id 缺失时读 campusNewItem，任务 ④ 落地后清理
+    "detail": False,    # 阶段 4 已清理
+    "publish": False,   # 阶段 4 已清理
+    "success": False,   # 阶段 4 已清理
 }
 
 
@@ -174,3 +178,41 @@ def test_渲染卡片的页面在占位里声明了卡片模板的类(page):
     for cls in ("opacity-80", "line-clamp-2", "active:scale-[0.99]",
                 "bg-emerald-50", "text-amber-600"):
         assert cls in placeholder, "%s 的占位 div 缺少 %s" % (page, cls)
+
+
+# --------------------------------------------------------------------------
+# 写路径（阶段 4 之后的检查）
+# 断言一律查"定义或调用"的形式，不查裸词——原因见模块开头的说明
+# --------------------------------------------------------------------------
+def test_发布页把数据交给接口而不是本地存储():
+    js = page_js("publish")
+    assert "API.create(" in js, "发布页应通过 API.create 提交"
+    assert "success.html?id=" in js, "成功后应带着新 id 跳到成功页"
+
+
+def test_发布页不再往本地存储写东西():
+    assert not re.search(r"setItem\(\s*['\"]campus", page_js("publish"))
+
+
+def test_成功页不再依赖本机暂存():
+    """`?id` 由发布页带上，campusNewItem 那一级过渡已随发布改造一起删除。"""
+    js = page_js("success")
+    assert "API.detail(" in js
+    assert not re.search(r"getItem\(\s*['\"]campusNewItem", js)
+
+
+def test_详情页的写路径已改走接口():
+    assert "API.resolve(" in page_js("detail")
+
+
+def test_详情页不再有_new_特殊值与内嵌数据():
+    js = page_js("detail")
+    assert not re.search(r"\bbuildNewItem\s*\(", js), "buildNewItem 应已删除"
+    assert not re.search(r"===\s*['\"]new['\"]", js), "?id=new 这个特殊值应已取消"
+    assert "var ITEMS" not in js, "内嵌演示数据应已删除"
+
+
+def test_全站不再有本机插入那一条的逻辑():
+    """阶段 3 删掉了 insertLocalPost（列表改为只认服务端数据），这里是全站确认。"""
+    for page in PAGES:
+        assert not re.search(r"\binsertLocalPost\s*\(", page_js(page)), page
