@@ -207,7 +207,6 @@ pytest tests/integration -q             # 只跑集成测试
 | `docs/system-design.md` | 目录结构、数据库表、接口（路径/参数/响应字段/状态码）、关键流程、种子数据、迁移方案、测试清单变化时 |
 | `docs/development-plan.md` | 阶段划分、任务顺序、工期、风险变化时 |
 | `docs/coding-standards.md` | 本规范自身变化时 |
-| `docs/墨刀导入说明.md` | 原型背景材料，**不改**（属上游产物，只读保留） |
 
 ### 7.2 同步规则
 

@@ -107,8 +107,7 @@ campus-lost-found/
 │   ├── PRD.md                       产品需求文档
 │   ├── system-design.md             本文档
 │   ├── development-plan.md          开发计划
-│   ├── coding-standards.md          代码规范（含测试与文档同步要求）
-│   └── 墨刀导入说明.md               原型自带的背景材料（导入方式与演示顺序）
+│   └── coding-standards.md          代码规范（含测试与文档同步要求）
 ├── requirements.txt                 运行期依赖：fastapi、uvicorn
 ├── requirements-dev.txt             开发与测试依赖：pytest、httpx（引用 requirements.txt）
 ├── README.md                        运行说明
