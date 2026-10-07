@@ -1,0 +1,535 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "校园失物招领 API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/items/home": {
+      "get": {
+        "summary": "首页最新信息列表",
+        "description": "首页「最新信息」列表。\n\n只包含演示数据中 ``home_order`` 非空的部分（6 条）加上用户新发布的数据；\n用户新发布的数据排在最前，其后按 ``home_order`` 固定顺序。",
+        "operationId": "list_home_api_items_home_get",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(all|seek|find)$",
+              "description": "筛选类型，默认 all",
+              "default": "all",
+              "title": "Type"
+            },
+            "description": "筛选类型，默认 all"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/items/search": {
+      "get": {
+        "summary": "搜索物品",
+        "description": "搜索物品：对搜索索引文本做不区分大小写的子串匹配，再按类型筛选。\n\n查询参数：\n    q —— 关键词，默认空串（返回全部 8 条演示数据 + 用户新发布的数据）。\n    type —— all / seek / find，默认 all。\n\n返回：200 + {count, items[]}，顺序为「用户新发布的在前，其次按 search_order」。\n\n实现要点：\n    - 匹配用 instr(lower(keywords), lower(:q))，等价于改造前的\n      `data-keywords.toLowerCase().indexOf(keyword) !== -1`。SQLite 的 lower()\n      只处理 ASCII，中文不受影响，所以与前端行为一致。\n    - 与首页不同，搜索**包含 7、8 号**——它们只在搜索页与详情页出现，\n      所以这里没有 home_order 那道过滤。",
+        "operationId": "search_items_api_items_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "关键词，空串表示不按关键词过滤",
+              "default": "",
+              "title": "Q"
+            },
+            "description": "关键词，空串表示不按关键词过滤"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(all|seek|find)$",
+              "description": "筛选类型，默认 all",
+              "default": "all",
+              "title": "Type"
+            },
+            "description": "筛选类型，默认 all"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/items/{item_id}": {
+      "get": {
+        "summary": "物品详情",
+        "description": "取单条物品的完整详情。\n\n路径参数：\n    item_id —— 物品 id，正整数。\n\n返回：200 + DetailItem（含 code / publisher / masked / contact 等只在这里才\n    出现的字段；详情页的「时间」是绝对时间，与卡片上的相对文案不同）。\n\n异常：id 不存在时 404，错误体 {code: \"not_found\", message: \"物品不存在\"}。\n    前端收到 404 应回落去取 1 号，沿用改造前的容错行为。\n\n约束：本路由是路径参数，必须注册在 /api/items/home 与 /api/items/search\n    这两个字面量路径**之后**，否则会把它们吃掉、并因整型转换失败返回 422。",
+        "operationId": "get_item_api_items__item_id__get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "description": "物品 id",
+              "title": "Item Id"
+            },
+            "description": "物品 id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/items": {
+      "post": {
+        "summary": "发布信息",
+        "description": "发布一条信息。\n\n请求体：``CreateRequest``（name / type / category / time / place / desc / contact）。\n前端已先校验一遍必填，这里是二次兜底——防止绕过前端直接调接口。\n\n返回：201 + 完整的 DetailItem，含服务端生成的 id 与编号（LF-00N）。\n\n服务端补全的字段（前端**不提供**，也不要让它提供）：\n\n- ``status``：寻物 → seeking，招领 → unclaimed。新发布的一律**不是**已解决。\n- ``icon``：寻物/招领各一个通用图标，与原前端 buildNewItem 的取值一致。\n- ``card_desc``：取 ``desc``。卡片用 line-clamp-2 截断，不必另写一份短描述。\n- ``time_display``：留 NULL → 读取时按\"今天/昨天\"推导，让新数据随时间自然变化\n  （演示数据那一列是写死的文案，见 serialize.format_card_time）。\n- ``published_at``：服务端当前时间，不用客户端时钟（客户端时间可能不准）。\n- ``publisher`` / ``avatar``：固定「我（本机发布）」/「我」——没有账号体系。\n- ``masked``：由 ``contact`` 现算。新数据不存在\"写死的脱敏串\"这回事。\n- ``keywords``：name + category + place + desc + 类型同义词，供搜索用。\n- ``source`` / ``home_order`` / ``search_order``：'user' / NULL / NULL，\n  排序时因此排在最前（见 system-design 第 4.3 节）。",
+        "operationId": "create_item_api_items_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/items/{item_id}/resolve": {
+      "post": {
+        "summary": "标记已解决",
+        "description": "把一条信息标记为已解决。\n\n路径参数：\n    item_id —— 物品 id。\n\n返回：200 + 更新后的 DetailItem（``status`` 为 ``resolved``）。\n\n异常：id 不存在时 404，错误体与详情接口一致。\n\n幂等：对已解决的条目重复调用不报错，仍返回 resolved——前端按钮被点两次、\n或者两个人同时点，结果都一样。\n\n约束：**不做发布者归属校验**（与改造前一致：任何访客都能点这个按钮），\n而且生效范围是**全局**的，不再像过去那样只影响本机浏览器。",
+        "operationId": "resolve_item_api_items__item_id__resolve_post",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "description": "物品 id",
+              "title": "Item Id"
+            },
+            "description": "物品 id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/home.html": {
+      "get": {
+        "summary": "旧地址跳转（首页已更名为 index.html）",
+        "description": "旧地址兼容：首页由 home.html 更名为 index.html 后，把旧链接跳过去。\n\n返回：302 跳转到 /index.html。\n约束：必须注册在静态挂载之前，否则会被 StaticFiles 兜底匹配成 404。\n    用 302（临时）而不是 301，避免浏览器把旧地址永久缓存住。",
+        "operationId": "legacy_home_home_html_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "seek",
+              "find"
+            ],
+            "title": "Type"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "place": {
+            "type": "string",
+            "title": "Place"
+          },
+          "desc": {
+            "type": "string",
+            "title": "Desc"
+          },
+          "contact": {
+            "type": "string",
+            "title": "Contact"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "category",
+          "time",
+          "place",
+          "desc",
+          "contact"
+        ],
+        "title": "CreateRequest",
+        "description": "发布请求（``POST /api/items`` 的请求体）。"
+      },
+      "DetailItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "seek",
+              "find"
+            ],
+            "title": "Type"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "seeking",
+              "unclaimed",
+              "resolved"
+            ],
+            "title": "Status"
+          },
+          "icon": {
+            "type": "string",
+            "title": "Icon"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "timeLabel": {
+            "type": "string",
+            "title": "Timelabel"
+          },
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "place": {
+            "type": "string",
+            "title": "Place"
+          },
+          "publish": {
+            "type": "string",
+            "title": "Publish"
+          },
+          "desc": {
+            "type": "string",
+            "title": "Desc"
+          },
+          "publisher": {
+            "type": "string",
+            "title": "Publisher"
+          },
+          "avatar": {
+            "type": "string",
+            "title": "Avatar"
+          },
+          "masked": {
+            "type": "string",
+            "title": "Masked"
+          },
+          "contact": {
+            "type": "string",
+            "title": "Contact"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "type",
+          "status",
+          "icon",
+          "category",
+          "timeLabel",
+          "time",
+          "place",
+          "publish",
+          "desc",
+          "publisher",
+          "avatar",
+          "masked",
+          "contact"
+        ],
+        "title": "DetailItem"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HomeResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "items"
+        ],
+        "title": "HomeResponse"
+      },
+      "ListItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "seek",
+              "find"
+            ],
+            "title": "Type"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "seeking",
+              "unclaimed",
+              "resolved"
+            ],
+            "title": "Status"
+          },
+          "icon": {
+            "type": "string",
+            "title": "Icon"
+          },
+          "desc": {
+            "type": "string",
+            "title": "Desc"
+          },
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "place": {
+            "type": "string",
+            "title": "Place"
+          },
+          "keywords": {
+            "type": "string",
+            "title": "Keywords"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "status",
+          "icon",
+          "desc",
+          "time",
+          "place",
+          "keywords"
+        ],
+        "title": "ListItem",
+        "description": "列表项（首页与搜索页共用）。\n\n``keywords`` 不参与前端筛选（筛选在服务端做），但前端渲染卡片时需要把它\n原样写进 ``data-keywords`` 属性——主题样式与 DOM 结构都依赖该属性存在。"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
