@@ -60,6 +60,23 @@ def client(db_path):
 
 
 @pytest.fixture
+def create_payload():
+    """一份合法的发布请求体，供写路径的集成测试与契约测试共用。
+
+    单独放这里是为了只定义一次——两处测试各抄一份的话，改动字段时容易只改一边。
+    """
+    return {
+        "name": "测试水杯",
+        "type": "find",
+        "category": "水杯",
+        "time": "2026-10-07 15:30",
+        "place": "第二食堂一楼",
+        "desc": "蓝色保温杯，杯盖有小熊图案。",
+        "contact": "13800001234",
+    }
+
+
+@pytest.fixture
 def make_user_item(conn):
     """插入一条"用户新发布"的数据，返回其 id。
 

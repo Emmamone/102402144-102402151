@@ -115,7 +115,7 @@ campus-lost-found/
 │   ├── seed.py                      幂等写入 8 条演示数据
 │   └── __main__.py                  启动入口：确保数据库、起服务、开浏览器（python -m backend）
 ├── tests/                           测试层（与 frontend / backend / docs 平级）
-│   ├── conftest.py                  公共 fixture：临时数据库、TestClient、演示数据
+│   ├── conftest.py                  公共 fixture：临时数据库、TestClient、演示数据、发布请求体
 │   ├── unit/
 │   │   ├── test_serialize.py        脱敏、时间推导、编号生成、搜索索引拼装
 │   │   ├── test_schemas.py          请求模型校验

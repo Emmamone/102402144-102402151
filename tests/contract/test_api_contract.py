@@ -4,9 +4,11 @@
 所以"接口返回的字段是否还是页面读取的那几个"必须在这里锁住——字段改名在后端
 测试里可能全绿，但页面会静默丢内容。
 
-覆盖前端的三处渲染：
+覆盖前端的三处渲染与写路径的返回值：
 - 列表卡片（首页与搜索页共用 ``renderCard``）→ ``CARD_REQUIRED``
 - 详情页 ``render(it)`` → ``DETAIL_REQUIRED``
+- 写路径：发布与标记已解决的返回值会被前端直接拿去渲染（详情页 / 成功页摘要），
+  所以也必须与详情接口同形 → 同 ``DETAIL_REQUIRED``
 - 错误体形状 → ``{code, message}``
 
 **前端新增对某字段的依赖时，必须同步在本文件加断言。**
@@ -134,3 +136,27 @@ def test_详情的时间标签只有两种取值(client):
 def test_详情与列表共用同一套编号规则(client):
     for item_id in (1, 8):
         assert client.get("/api/items/%d" % item_id).json()["code"] == "LF-%03d" % item_id
+
+
+# --------------------------------------------------------------------------
+# 写路径的字段契约
+# 发布成功后的返回值会被前端直接拿去渲染（详情页 / 成功页摘要），
+# 标记已解决的返回值会被详情页拿去重渲染——两者都必须与详情接口同形
+# --------------------------------------------------------------------------
+def test_发布返回的字段与详情页渲染所需完全一致(client, create_payload):
+    body = client.post("/api/items", json=create_payload).json()
+
+    assert set(body) == set(DETAIL_REQUIRED), "发布返回值字段集变了，前端要同步改"
+
+
+def test_标记已解决返回的字段与详情页渲染所需完全一致(client):
+    body = client.post("/api/items/5/resolve").json()
+
+    assert set(body) == set(DETAIL_REQUIRED)
+
+
+def test_写路径返回的字段类型同样正确(client, create_payload):
+    for body in (client.post("/api/items", json=create_payload).json(),
+                 client.post("/api/items/5/resolve").json()):
+        for field, expected_type in DETAIL_REQUIRED.items():
+            assert isinstance(body[field], expected_type), field
