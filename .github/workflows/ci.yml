@@ -16,6 +16,24 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
+      # 放在最前面（早于装依赖）：这是最便宜也最需要说清楚的一道检查。
+      # 测试层是硬性要求（见 docs/coding-standards.md 第 3.1 节）；缺东西时给出明确报错，
+      # 而不是让 pip 抛 "Could not open requirements file"、或让 pytest 抛
+      # "file or directory not found" 这类看不出所以然的错。
+      - name: 确认前置条件已就位
+        run: |
+          missing=""
+          for d in tests/unit tests/integration tests/contract; do
+            [ -d "$d" ] || missing="$missing $d"
+          done
+          for f in requirements.txt requirements-dev.txt; do
+            [ -f "$f" ] || missing="$missing $f"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::缺少:$missing —— 测试层见 docs/coding-standards.md 第 3.1 节，依赖文件见第 3.6 节"
+            exit 1
+          fi
+
       - name: 准备 Python
         uses: actions/setup-python@v5
         with:
@@ -25,19 +43,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
-
-      # 测试层是硬性要求（见 docs/coding-standards.md 第 3.1 节）。
-      # 缺目录时给出明确报错，而不是让 pytest 抛一句难懂的 "file or directory not found"。
-      - name: 确认测试层已就位
-        run: |
-          missing=""
-          for d in tests/unit tests/integration tests/contract; do
-            [ -d "$d" ] || missing="$missing $d"
-          done
-          if [ -n "$missing" ]; then
-            echo "::error::测试层缺少目录:$missing —— 见 docs/coding-standards.md 第 3.1 节"
-            exit 1
-          fi
 
       - name: 代码风格检查（ruff）
         run: ruff check .

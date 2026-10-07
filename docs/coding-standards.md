@@ -144,13 +144,13 @@ ruff check .                            # 代码风格检查（只检查，不�
 | 触发 | 任何分支的 push、任何 PR，以及手动运行（`workflow_dispatch`） |
 | 运行环境 | `ubuntu-latest` + Python 3.14 |
 | 依赖安装 | `pip install -r requirements-dev.txt` |
-| 执行顺序 | ① 确认测试层目录齐备 → ② `ruff check .` → ③ `tests/unit` → ④ `tests/integration` → ⑤ `tests/contract` |
+| 执行顺序 | ① 确认前置条件（测试层目录 + 依赖文件）→ ② 准备 Python → ③ 安装依赖 → ④ `ruff check .` → ⑤ `tests/unit` → ⑥ `tests/integration` → ⑦ `tests/contract` |
 | 超时 | 10 分钟 |
 
 **规则**：
 
 - 三个测试层各有独立的步骤，**哪一层挂了在 CI 页面上直接可见**，不需要翻日志找是哪类测试失败。
-- 测试层目录缺失时，第一步就会以明确的错误信息失败（而不是让 `pytest` 抛出难懂的 "file or directory not found"）。这是有意的：**没有测试就应当是红的**，不允许出现"没有测试却显示通过"的假绿。
+- 前置条件检查**排在装依赖之前**，缺 `tests/unit`、`tests/integration`、`tests/contract`、`requirements.txt` 或 `requirements-dev.txt` 中任何一项时，第一步就以明确的错误信息失败——而不是让 pip 抛 `Could not open requirements file`、或让 `pytest` 抛 `file or directory not found` 这类看不出所以然的错。这是有意的：**没有测试就应当是红的**，不允许出现"没有测试却显示通过"的假绿。
 - 失败顺序按测试金字塔从快到慢排列，风格问题与单元测试会最先暴露，不用等集成测试跑完。
 - CI 红着不算完成；修复后重新推送即可重新触发。
 
