@@ -4,6 +4,11 @@
 所以"接口返回的字段是否还是页面读取的那几个"必须在这里锁住——字段改名在后端
 测试里可能全绿，但页面会静默丢内容。
 
+覆盖前端的三处渲染：
+- 列表卡片（首页与搜索页共用 ``renderCard``）→ ``CARD_REQUIRED``
+- 详情页 ``render(it)`` → ``DETAIL_REQUIRED``
+- 错误体形状 → ``{code, message}``
+
 **前端新增对某字段的依赖时，必须同步在本文件加断言。**
 """
 
@@ -59,11 +64,70 @@ def test_id_是唯一整数且与详情页链接一致(client):
 
 
 def test_错误体形状是_code_message(client):
-    body = client.get("/api/items/search").json()
-    assert set(body) == {"code", "message"}
+    """前端 api.js 靠 body.message 给用户提示，所以错误体必须是这个形状。
+
+    两类错误各验一个：404（id 不存在，已经会真实发生）与 501（尚未实现的写接口）。
+    """
+    for response in (client.get("/api/items/999"), client.post("/api/items")):
+        assert response.status_code >= 400
+        assert set(response.json()) == {"code", "message"}
 
 
 def test_计数与列表长度一致(client):
     for type_filter in ("all", "seek", "find"):
         payload = client.get("/api/items/home", params={"type": type_filter}).json()
         assert payload["count"] == len(payload["items"])
+
+
+def test_搜索结果也用同一套卡片字段(client):
+    """搜索页与首页共用 renderCard，字段集合必须一致。"""
+    items = client.get("/api/items/search").json()["items"]
+    assert items
+    for item in items:
+        assert set(item) == set(CARD_REQUIRED)
+        for field, expected_type in CARD_REQUIRED.items():
+            assert isinstance(item[field], expected_type), field
+
+
+# --------------------------------------------------------------------------
+# 详情页 render(it) 读取的字段
+# --------------------------------------------------------------------------
+DETAIL_REQUIRED = {
+    "id": int,
+    "code": str,
+    "name": str,
+    "type": str,
+    "status": str,
+    "icon": str,
+    "category": str,
+    "timeLabel": str,
+    "time": str,
+    "place": str,
+    "publish": str,
+    "desc": str,
+    "publisher": str,
+    "avatar": str,
+    "masked": str,
+    "contact": str,
+}
+
+
+def test_详情返回的字段与详情页渲染所需完全一致(client):
+    body = client.get("/api/items/1").json()
+    assert set(body) == set(DETAIL_REQUIRED), "字段集合发生变化，详情页 render 需要同步修改"
+
+
+def test_详情字段类型正确(client):
+    body = client.get("/api/items/1").json()
+    for field, expected_type in DETAIL_REQUIRED.items():
+        assert isinstance(body[field], expected_type), field
+
+
+def test_详情的时间标签只有两种取值(client):
+    labels = {client.get("/api/items/%d" % i).json()["timeLabel"] for i in range(1, 9)}
+    assert labels == {"丢失时间", "拾取时间"}
+
+
+def test_详情与列表共用同一套编号规则(client):
+    for item_id in (1, 8):
+        assert client.get("/api/items/%d" % item_id).json()["code"] == "LF-%03d" % item_id

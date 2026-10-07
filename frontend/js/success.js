@@ -7,6 +7,8 @@
  * 留待阶段 4 改造为按 ?id 向服务端查询。
  */
 
+/* 摘要：当前读 localStorage 的 campusNewItem，失败时用写死的兜底对象
+   （阶段 4 起改为按 ?id 查询，兜底仍保留，保证直接打开本页不空白） */
 function fillSummary() {
   var saved = null;
   try {

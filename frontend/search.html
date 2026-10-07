@@ -11,6 +11,7 @@
 </head>
 <body class="w-full h-full m-0 overflow-hidden flex items-center justify-center bg-slate-100 text-slate-800 antialiased">
 <div id="phone-canvas" class="w-full h-full max-w-[393px] max-h-[852px] bg-[#f5f7fb] flex flex-col overflow-hidden relative">
+<!-- 搜索结果页：关键词 + 类型筛选结果。当前由内嵌卡片 + localStorage 驱动（阶段 3 改为 GET /api/items/search），交互见 js/search.js -->
 <!-- 顶部：可编辑搜索框 + 筛选 -->
 <header class="shrink-0 bg-white border-b border-slate-100 px-3 pt-4 pb-3">
 <div class="flex items-center gap-1">
@@ -31,7 +32,9 @@
 <button class="px-4 h-8 rounded-full border text-[12px] font-medium bg-white text-slate-500 border-slate-200 transition" data-tab="find" onclick="setFilter('find')">招领</button>
 </div>
 </header>
-<!-- 结果滚动区 -->
+<!-- 结果滚动区。下方 8 张卡片是当前实现（阶段 0 迁入，未改行为），
+     改造后由 js/search.js 渲染；无论谁渲染，卡片都必须带 data-result 与 data-keywords ——
+     主题 CSS 用 `#resultList [data-result]` 选中卡片，漏掉属性会静默丢掉左侧金线与圆角 -->
 <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
 <div class="px-4 pt-4 pb-5">
 <p class="text-[12px] text-slate-400">
@@ -246,7 +249,8 @@
 <p class="mt-4 text-center text-[11px] text-slate-400">结果按发布时间从新到旧排列</p>
 </div>
 </div>
-<!-- 动态样式占位（供脚本切换状态配色使用） -->
+<!-- 动态样式占位：Tailwind 运行时按源码生成样式类，脚本动态用到的类必须在这里出现，
+     否则不会被生成（状态配色由 applyResolved 在运行时改写） -->
 <div class="hidden bg-slate-100 text-slate-500 bg-orange-50 text-orange-600 bg-amber-50 text-amber-600 bg-emerald-50 text-emerald-600 bg-blue-50 text-blue-600"></div>
 </div>
 <script src="js/api.js"></script>

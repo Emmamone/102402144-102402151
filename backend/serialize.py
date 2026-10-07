@@ -41,6 +41,12 @@ def item_code(item_id: Any) -> str:
 
 
 def time_label(item_type: str) -> str:
+    """给出详情页「时间」那一行的标题文案。
+
+    参数：item_type —— 'seek' 或 'find'。
+    返回：寻物为「丢失时间」，招领为「拾取时间」；取值异常时按寻物处理
+        （与前端 switch 时的兜底一致，避免页面出现空白标题）。
+    """
     return TIME_LABEL.get(item_type, TIME_LABEL["seek"])
 
 

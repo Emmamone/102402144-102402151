@@ -53,6 +53,13 @@ def get_conn():
 
 
 def _not_implemented(what: str) -> HTTPException:
+    """构造"尚未实现"的统一错误响应。
+
+    参数：what —— 接口的中文名，用于拼出「XXX 尚未实现」这句提示。
+    返回：一个 501 的 HTTPException，错误体由上面的处理器摊平成 {code, message}。
+    约束：占位接口一律走这里，保证 4 个未实现路由的错误体形状完全一致
+        （tests/integration/test_placeholders.py 会校验 code 为 not_implemented）。
+    """
     return HTTPException(
         status_code=501,
         detail={"code": "not_implemented", "message": "%s 尚未实现" % what},
@@ -90,27 +97,94 @@ def list_home(
 # --------------------------------------------------------------------------
 # 占位：待后续阶段实现（路径与响应形状已按设计固定）
 # --------------------------------------------------------------------------
-@app.get("/api/items/search")
-def search_items_placeholder() -> None:
-    """搜索接口占位。规则见 docs/system-design.md 第 5.2 节。"""
-    raise _not_implemented("搜索接口")
+@app.get("/api/items/search", response_model=schemas.HomeResponse)
+def search_items(
+    q: str = Query("", description="关键词，空串表示不按关键词过滤"),
+    type: str = Query("all", pattern="^(all|seek|find)$"),
+    conn: sqlite3.Connection = Depends(get_conn),
+) -> dict:
+    """搜索物品：对搜索索引文本做不区分大小写的子串匹配，再按类型筛选。
+
+    查询参数：
+        q —— 关键词，默认空串（返回全部 8 条演示数据 + 用户新发布的数据）。
+        type —— all / seek / find，默认 all。
+
+    返回：200 + {count, items[]}，顺序为「用户新发布的在前，其次按 search_order」。
+
+    实现要点：
+        - 匹配用 instr(lower(keywords), lower(:q))，等价于改造前的
+          `data-keywords.toLowerCase().indexOf(keyword) !== -1`。SQLite 的 lower()
+          只处理 ASCII，中文不受影响，所以与前端行为一致。
+        - 与首页不同，搜索**包含 7、8 号**——它们只在搜索页与详情页出现，
+          所以这里没有 home_order 那道过滤。
+    """
+    rows = conn.execute(
+        """
+        SELECT * FROM items
+        WHERE (:type = 'all' OR type = :type)
+          AND (:q = '' OR instr(lower(keywords), lower(:q)) > 0)
+        ORDER BY (source = 'user') DESC, search_order ASC, id DESC
+        """,
+        {"type": type, "q": q},
+    ).fetchall()
+
+    now = datetime.now()
+    items = [serialize.row_to_list_item(row, now) for row in rows]
+    return {"count": len(items), "items": items}
 
 
-@app.get("/api/items/{item_id}")
-def get_item_placeholder(item_id: int) -> None:
-    """详情接口占位。见 docs/system-design.md 第 5.3 节。"""
-    raise _not_implemented("详情接口")
+@app.get("/api/items/{item_id}", response_model=schemas.DetailItem)
+def get_item(
+    item_id: int,
+    conn: sqlite3.Connection = Depends(get_conn),
+) -> dict:
+    """取单条物品的完整详情。
+
+    路径参数：
+        item_id —— 物品 id，正整数。
+
+    返回：200 + DetailItem（含 code / publisher / masked / contact 等只在这里才
+        出现的字段；详情页的「时间」是绝对时间，与卡片上的相对文案不同）。
+
+    异常：id 不存在时 404，错误体 {code: "not_found", message: "物品不存在"}。
+        前端收到 404 应回落去取 1 号，沿用改造前的容错行为。
+
+    约束：本路由是路径参数，必须注册在 /api/items/home 与 /api/items/search
+        这两个字面量路径**之后**，否则会把它们吃掉、并因整型转换失败返回 422。
+    """
+    row = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "not_found", "message": "物品不存在"},
+        )
+    return serialize.row_to_detail_item(row)
 
 
 @app.post("/api/items")
 def create_item_placeholder() -> None:
-    """发布接口占位。见 docs/system-design.md 第 5.4 节。"""
+    """发布接口占位。
+
+    请求体（待实现）：CreateRequest —— name / type / category / time / place / desc / contact。
+    返回（待实现）：201 + DetailItem，并在服务端补全状态、图标、发布者、头像、
+        脱敏串、搜索索引与发布时间（前端不提供这些）。
+    当前：抛 501。前端 publish.js 因此仍写 localStorage。
+    规则见 docs/system-design.md 第 5.4 节。
+    """
     raise _not_implemented("发布接口")
 
 
 @app.post("/api/items/{item_id}/resolve")
 def resolve_item_placeholder(item_id: int) -> None:
-    """标记已解决接口占位。见 docs/system-design.md 第 5.5 节。"""
+    """标记已解决接口占位。
+
+    路径参数：item_id —— 物品 id。
+    返回（待实现）：200 + DetailItem（status 变为 resolved）；id 不存在时 404；
+        重复调用**幂等**，不报错。
+    当前：抛 501。前端 detail.js 的 markResolved 因此仍写 localStorage。
+    约束：本接口不做发布者归属校验（与现状一致），且生效范围是全局的。
+    规则见 docs/system-design.md 第 5.5 节。
+    """
     raise _not_implemented("标记已解决接口")
 
 
@@ -119,6 +193,12 @@ def resolve_item_placeholder(item_id: int) -> None:
 # --------------------------------------------------------------------------
 @app.get("/home.html")
 def legacy_home() -> RedirectResponse:
+    """旧地址兼容：首页由 home.html 更名为 index.html 后，把旧链接跳过去。
+
+    返回：302 跳转到 /index.html。
+    约束：必须注册在静态挂载之前，否则会被 StaticFiles 兜底匹配成 404。
+        用 302（临时）而不是 301，避免浏览器把旧地址永久缓存住。
+    """
     return RedirectResponse("/index.html", status_code=302)
 
 

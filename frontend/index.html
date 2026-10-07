@@ -11,6 +11,7 @@
 </head>
 <body class="w-full h-full m-0 overflow-hidden flex items-center justify-center bg-slate-100 text-slate-800 antialiased">
 <div id="phone-canvas" class="w-full h-full max-w-[393px] max-h-[852px] bg-[#f5f7fb] flex flex-col overflow-hidden relative">
+<!-- 首页：最新信息列表 + 分类筛选 + 搜索入口。数据来自 GET /api/items/home，渲染见 js/index.js -->
 <!-- 顶部：产品名 + 搜索 -->
 <header id="home-hero" class="shrink-0 bg-gradient-to-b from-blue-600 to-blue-500 px-4 pt-5 pb-6">
 <div class="flex items-start justify-between">
@@ -32,7 +33,7 @@
 </header>
 <!-- 主内容滚动区 -->
 <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
-<!-- 分类切换 -->
+<!-- 分类切换：点击后重新请求后端，不再读 DOM 上的 data-card 做前端过滤 -->
 <div class="sticky top-0 z-10 bg-[#f5f7fb] px-4 pt-4 pb-2">
 <div class="flex items-center gap-2">
 <button class="px-4 h-9 rounded-full border text-[13px] font-medium bg-blue-600 text-white border-blue-600 transition" data-tab="all" onclick="filterList('all')">全部</button>
@@ -63,8 +64,8 @@
 </footer>
 <!-- 提示条 -->
 <div class="hidden absolute left-1/2 -translate-x-1/2 bottom-28 z-50 px-4 py-2 rounded-xl bg-slate-800/90 text-white text-[12px] whitespace-nowrap" id="toast">提示</div>
-<!-- 动态样式占位：Tailwind 运行时按源码生成样式类，卡片改为脚本渲染后，
-     卡片模板用到的类必须在这里出现，否则不会被生成（尤其 opacity-80）。 -->
+<!-- 动态样式占位：Tailwind 运行时按源码生成样式类，脚本动态用到的类必须在这里出现，
+     否则不会被生成。列表卡片改由脚本渲染后，卡片模板的类都靠这一行兜住（尤其 opacity-80）。 -->
 <div class="hidden rounded-2xl bg-white p-4 border border-slate-100 shadow-sm transition active:scale-[0.99] opacity-80 flex items-start gap-3 w-11 h-11 shrink-0 rounded-xl bg-blue-50 bg-emerald-50 flex items-center justify-center text-[22px] text-blue-600 text-emerald-600 min-w-0 flex-1 flex items-center gap-1.5 text-[15px] font-semibold text-slate-800 truncate px-1.5 py-0.5 rounded text-[10px] font-medium ml-auto bg-orange-50 text-orange-600 bg-amber-50 text-amber-600 bg-slate-100 text-slate-500 mt-1.5 flex items-center gap-3 text-[11px] text-slate-400 gap-0.5 text-[13px] leading-relaxed text-slate-500 line-clamp-2"></div>
 </div>
 <script src="js/api.js"></script>
