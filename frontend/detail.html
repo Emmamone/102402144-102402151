@@ -20,6 +20,8 @@
 </header>
 <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
 <div class="flex flex-col gap-3 p-4">
+<!-- 信息详情页：单条信息的完整字段 + 联系方式展开 + 标记已解决。
+     当前数据来自本页内嵌数据与 localStorage 的 ?id=new（阶段 3/4 改为 GET /api/items/{id}），渲染见 js/detail.js -->
 <!-- 概览 -->
 <section class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
 <div class="flex items-start gap-3">
@@ -64,7 +66,8 @@
           </h2>
 <p class="mt-2 text-[13px] leading-relaxed text-slate-600" id="dDesc">—</p>
 </section>
-<!-- 联系方式 -->
+<!-- 联系方式：默认只展示脱敏串（服务端返回的 masked）；
+     点「联系发布者」后隐藏按钮、展开下方面板，见 js/detail.js 的 revealContact -->
 <section class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
 <h2 class="flex items-center gap-1.5 text-[14px] font-semibold text-slate-800">
 <iconify-icon class="text-[17px] text-blue-600" icon="mdi:account-circle-outline"></iconify-icon>联系方式
@@ -110,7 +113,8 @@
 </div>
 </div>
 <div class="hidden absolute left-1/2 -translate-x-1/2 bottom-16 z-50 px-4 py-2 rounded-xl bg-slate-800/90 text-white text-[12px] whitespace-nowrap" id="toast">提示</div>
-<!-- 动态样式占位（供脚本切换类型 / 状态 / 按钮配色使用） -->
+<!-- 动态样式占位：Tailwind 运行时按源码生成样式类，脚本动态用到的类必须在这里出现，
+     否则不会被生成（类型标签、状态徽标、已解决按钮三处的配色都由脚本改写） -->
 <div class="hidden bg-emerald-50 text-emerald-600 bg-amber-50 text-amber-600 bg-slate-100 text-slate-400 border-blue-200 border-slate-200"></div>
 </div>
 <script src="js/api.js"></script>

@@ -8,6 +8,8 @@
  * 本页仍使用内嵌数据、localStorage 与 ?id=new 特殊值 —— 留待阶段 3 / 4 改造。
  */
 
+/* 内嵌演示数据（阶段 0 原样保留；阶段 3 起改为 GET /api/items/{id} 返回）。
+   注意各条目的 masked 与 contact 不同源——masked 是写死的展示值，不能由 contact 推导 */
 var ITEMS = {
   '1': {
     name: '校园卡', type: 'seek', status: 'seeking', icon: 'mdi:card-account-details-outline',
@@ -111,6 +113,7 @@ function buildNewItem(s) {
   };
 }
 
+/* 状态徽标与下方按钮的联动：已解决时按钮置灰禁用，文案改为「已标记为已解决」 */
 function applyStatus(state) {
   var badge = document.getElementById('dStatus');
   badge.textContent = STATUS_TEXT[state] || '寻找中';
@@ -202,6 +205,7 @@ function revealContact() {
   showToast('已显示发布者联系方式');
 }
 
+/* 标记已解决：当前把 id 写进 localStorage（阶段 4 起改为 POST /api/items/{id}/resolve） */
 function markResolved() {
   if (!currentItem) { return; }
   var ids = getResolvedIds();

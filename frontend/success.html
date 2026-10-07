@@ -28,6 +28,8 @@
             你的信息已经出现在「最新信息」列表中，<br/>如果有线索，同学会通过联系方式找到你。
           </p>
 </div>
+<!-- 发布成功页：展示刚发布信息的摘要 + 两个后续入口。
+     当前读 localStorage 的 campusNewItem，无数据时用写死的兜底摘要（阶段 4 改为按 ?id 查询），见 js/success.js -->
 <!-- 信息摘要 -->
 <div class="mt-7 bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
 <p class="text-[12px] text-slate-400">信息摘要</p>
@@ -79,7 +81,8 @@
 <p class="mt-auto pt-6 text-center text-[11px] text-slate-400">校园失物招领 · 让物品回到主人身边</p>
 </div>
 </div>
-<!-- 动态样式占位（供脚本切换类型标签配色使用） -->
+<!-- 动态样式占位：Tailwind 运行时按源码生成样式类，脚本动态用到的类必须在这里出现，
+     否则不会被生成（寻物 / 招领两种标签配色由脚本按类型切换） -->
 <div class="hidden bg-emerald-50 text-emerald-600 bg-blue-50 text-blue-600"></div>
 </div>
 <script src="js/api.js"></script>

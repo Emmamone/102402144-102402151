@@ -53,6 +53,8 @@ function formatDateTime(d) {
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
+/* 校验 + 提交。6 条错误文案与滚动到首个错误字段的行为属于需求，必须逐字保留；
+   提交成功分支当前写 localStorage（阶段 4 起改为 POST /api/items） */
 function submitForm() {
   var fields = [
     { id: 'fName', err: 'eName' },

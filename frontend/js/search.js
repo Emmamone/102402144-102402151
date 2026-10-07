@@ -29,6 +29,7 @@ function applyResolved() {
   });
 }
 
+/* 把本机刚发布的那条插到结果最上面（阶段 0 原样保留；阶段 3 起由服务端返回，届时整个函数删除） */
 function insertLocalPost() {
   var item;
   try { item = JSON.parse(localStorage.getItem('campusNewItem') || 'null'); } catch (err) { item = null; }
@@ -49,6 +50,7 @@ function insertLocalPost() {
   document.querySelector('#resultList .flex.flex-col').insertBefore(card, document.querySelector('#resultList .flex.flex-col').firstChild);
 }
 
+/* 前端筛选：对每张卡片的 data-keywords 做子串匹配，再按 data-result 过滤类型（阶段 3 起改为请求后端） */
 function runSearch() {
   var kw = document.getElementById('kw').value.trim();
   var key = kw.toLowerCase();
