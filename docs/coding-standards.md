@@ -110,16 +110,19 @@ tests/
 ### 3.6 运行方式
 
 ```bash
-pip install -r requirements-dev.txt     # pytest、httpx
-pytest -q                               # 全部
-pytest tests/unit -q                    # 只跑单元测试（秒级）
-pytest tests/integration -q             # 只跑集成测试
+pip install -r requirements-dev.txt     # pytest、httpx、ruff
+python -m pytest -q                     # 全部
+python -m pytest tests/unit -q          # 只跑单元测试（秒级）
+python -m pytest tests/integration -q   # 只跑集成测试
+ruff check .                            # 代码风格检查（只检查，不自动修改）
 ```
+
+用 `python -m pytest` 而不是裸 `pytest`：前者会把当前工作目录加入 `sys.path`，测试才能 `import backend`，不需要额外配置 `pythonpath`。
 
 依赖文件分工：
 
 - `requirements.txt`：运行期依赖（`fastapi`、`uvicorn`）。
-- `requirements-dev.txt`：开发与测试依赖（`pytest`、`httpx`），并**引用**运行期依赖。
+- `requirements-dev.txt`：开发与测试依赖（`pytest`、`httpx`、`ruff`），并**引用**运行期依赖。
 
 ### 3.7 完成的定义（DoD）
 
@@ -127,9 +130,31 @@ pytest tests/integration -q             # 只跑集成测试
 
 1. 功能实现，且手工验收项通过。
 2. **对应的自动化测试已写并通过**（纯逻辑 → 单元测试；接口 → 集成测试；前端依赖的字段 → 契约测试）。
-3. `pytest -q` 全绿。
-4. 受影响的文档已在同一次提交里更新。
-5. 页面外观与交互没有未经说明的变化。
+3. `python -m pytest -q` 与 `ruff check .` 本地全绿。
+4. **CI 全绿**（见 3.8）——本地绿不替代 CI 绿。
+5. 受影响的文档已在同一次提交里更新。
+6. 页面外观与交互没有未经说明的变化。
+
+### 3.8 持续集成
+
+工作流文件：`.github/workflows/ci.yml`。
+
+| 项 | 配置 |
+| --- | --- |
+| 触发 | 任何分支的 push、任何 PR，以及手动运行（`workflow_dispatch`） |
+| 运行环境 | `ubuntu-latest` + Python 3.14 |
+| 依赖安装 | `pip install -r requirements-dev.txt` |
+| 执行顺序 | ① 确认测试层目录齐备 → ② `ruff check .` → ③ `tests/unit` → ④ `tests/integration` → ⑤ `tests/contract` |
+| 超时 | 10 分钟 |
+
+**规则**：
+
+- 三个测试层各有独立的步骤，**哪一层挂了在 CI 页面上直接可见**，不需要翻日志找是哪类测试失败。
+- 测试层目录缺失时，第一步就会以明确的错误信息失败（而不是让 `pytest` 抛出难懂的 "file or directory not found"）。这是有意的：**没有测试就应当是红的**，不允许出现"没有测试却显示通过"的假绿。
+- 失败顺序按测试金字塔从快到慢排列，风格问题与单元测试会最先暴露，不用等集成测试跑完。
+- CI 红着不算完成；修复后重新推送即可重新触发。
+
+> 尚未纳入 CI 的检查：前端遗留物扫描（内联脚本、`localStorage`、`insertLocalPost` 等）目前只在阶段 5 由人工 grep 核对。等前端改造完成、这些文件纳入版本控制后，可以再补一个 CI 步骤把它们固化下来。
 
 ## 4. 后端代码规范（Python）
 
@@ -146,6 +171,7 @@ pytest tests/integration -q             # 只跑集成测试
 ### 4.2 编码约定
 
 - 遵循 PEP 8；`snake_case` 命名函数与变量，`PascalCase` 命名模型类。
+- PEP 8 由 `ruff` 落地检查（配置见仓库根目录 `ruff.toml`，规则集 `E`/`F`/`W`/`I`，行宽 100）。提交前执行 `ruff check .`，CI 也会跑同一条命令；**不要**在 CI 之外依赖编辑器自动格式化，以免格式在不同机器上漂移。
 - **公开函数写类型注解**（参数与返回值）。
 - **时间只在一个地方取**：`serialize.py` 里的时间相关函数接受 `now` 参数；只有路由层或 `seed.py` 允许调 `datetime.now()` 并把它传下去。这是让单元测试可重复的前提。
 - **不吞异常**。`try/except` 必须要么记录、要么转换后重新抛出；不允许 `except: pass`。
@@ -231,7 +257,9 @@ pytest tests/integration -q             # 只跑集成测试
 - [ ] 单元测试不依赖当前时间、网络、文件系统；时间是从参数传进来的。
 - [ ] 接口测试断言到**字段级**，不只是状态码。
 - [ ] 前端新依赖的字段已加入**契约测试**。
-- [ ] `pytest -q` 全绿。
+- [ ] `python -m pytest -q` 全绿。
+- [ ] `ruff check .` 无告警。
+- [ ] 推送后 CI（`.github/workflows/ci.yml`）三个测试层步骤全绿。
 - [ ] 卡片仍带 `data-card` / `data-result` / `data-keywords`，首页卡片仍是 `#list` 的直接子元素。
 - [ ] 页面 js 中没有直接 `fetch(`，没有把渲染逻辑复制一份。
 - [ ] 页面 js 用的是全局函数声明，没有用模块模式。

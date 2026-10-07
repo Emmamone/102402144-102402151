@@ -103,13 +103,17 @@ campus-lost-found/
 │   │   └── test_items_write.py      发布、标记已解决、播种幂等
 │   └── contract/
 │       └── test_api_contract.py     接口字段与前端渲染的契约
+├── .github/
+│   └── workflows/
+│       └── ci.yml                   持续集成：风格检查 + 三层测试
 ├── docs/
 │   ├── PRD.md                       产品需求文档
 │   ├── system-design.md             本文档
 │   ├── development-plan.md          开发计划
 │   └── coding-standards.md          代码规范（含测试与文档同步要求）
 ├── requirements.txt                 运行期依赖：fastapi、uvicorn
-├── requirements-dev.txt             开发与测试依赖：pytest、httpx（引用 requirements.txt）
+├── requirements-dev.txt             开发与测试依赖：pytest、httpx、ruff（引用 requirements.txt）
+├── ruff.toml                        代码风格检查配置（PEP 8，规则集 E/F/W/I）
 ├── README.md                        运行说明
 ├── db.sqlite3                       运行时生成（已被 .gitignore 忽略）
 └── .gitignore / LICENSE
@@ -683,10 +687,16 @@ uvicorn backend.main:app --reload --port 8000
 跑测试（测试层使用临时数据库，**不会触碰 `db.sqlite3`**）：
 
 ```bash
-pytest -q                      # 全部
-pytest tests/unit -q           # 只跑单元测试
-pytest tests/integration -q    # 只跑集成测试
+python -m pytest -q                     # 全部
+python -m pytest tests/unit -q          # 只跑单元测试
+python -m pytest tests/integration -q   # 只跑集成测试
+python -m pytest tests/contract -q      # 只跑契约测试
+ruff check .                            # 代码风格检查
 ```
+
+用 `python -m pytest` 而非裸 `pytest`，是为了把工作目录加入 `sys.path`、让测试能 `import backend`。
+
+**持续集成**：`.github/workflows/ci.yml` 在任何分支的 push、任何 PR 以及手动触发时运行，步骤为「确认测试层目录齐备 → ruff 检查 → 单元测试 → 集成测试 → 契约测试」。三层各自独立成步，失败时能直接看出是哪一层的问题；测试层目录缺失会让构建明确失败，不会出现"没有测试却显示通过"的假绿。详见《代码规范》第 3.8 节。
 
 **注意事项**：
 

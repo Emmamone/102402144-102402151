@@ -1,0 +1,15 @@
+# ruff 配置 —— 对应 docs/coding-standards.md 第 4.2 节「遵循 PEP 8」。
+# CI 会执行 `ruff check .`（只检查、不自动修改）。
+#
+# 规则集：
+#   E / W —— pycodestyle 的 PEP 8 风格与警告
+#   F     —— pyflakes：未使用变量、未定义名称等真实缺陷
+#   I     —— import 排序
+#
+# 故意不选 UP（pyupgrade）、B（bugbear）等更激进的规则集：
+# 本项目代码量小，先把 PEP 8 与明显缺陷守住即可，避免风格争议。
+
+line-length = 100
+
+[lint]
+select = ["E", "F", "W", "I"]

@@ -1,0 +1,54 @@
+name: CI
+
+# 触发：任何分支的 push、任何 PR，以及手动运行
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: 测试层（unit / integration / contract）
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 准备 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      # 测试层是硬性要求（见 docs/coding-standards.md 第 3.1 节）。
+      # 缺目录时给出明确报错，而不是让 pytest 抛一句难懂的 "file or directory not found"。
+      - name: 确认测试层已就位
+        run: |
+          missing=""
+          for d in tests/unit tests/integration tests/contract; do
+            [ -d "$d" ] || missing="$missing $d"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::测试层缺少目录:$missing —— 见 docs/coding-standards.md 第 3.1 节"
+            exit 1
+          fi
+
+      - name: 代码风格检查（ruff）
+        run: ruff check .
+
+      # 用 `python -m pytest` 而非 `pytest`：前者会把工作目录加入 sys.path，
+      # 让测试能 `import backend`，无需额外配置 pythonpath。
+      - name: 单元测试（tests/unit）
+        run: python -m pytest tests/unit -q
+
+      - name: 集成测试（tests/integration）
+        run: python -m pytest tests/integration -q
+
+      - name: 契约测试（tests/contract）
+        run: python -m pytest tests/contract -q
