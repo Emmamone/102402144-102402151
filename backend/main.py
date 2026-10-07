@@ -19,7 +19,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+# FastAPI 的 Path 与 pathlib.Path 撞名；这里给前者起个别名，
+# 因为 pathlib.Path 在本模块里用得更频繁（拼前端资源目录、数据库路径）
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Path as PathParam
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -86,9 +89,9 @@ def get_conn():
 # --------------------------------------------------------------------------
 # 读接口：首页列表、搜索、详情
 # --------------------------------------------------------------------------
-@app.get("/api/items/home", response_model=schemas.HomeResponse)
+@app.get("/api/items/home", response_model=schemas.HomeResponse, summary="首页最新信息列表")
 def list_home(
-    type: str = Query("all", pattern="^(all|seek|find)$"),
+    type: str = Query("all", pattern="^(all|seek|find)$", description="筛选类型，默认 all"),
     conn: sqlite3.Connection = Depends(get_conn),
 ) -> dict:
     """首页「最新信息」列表。
@@ -114,10 +117,10 @@ def list_home(
 # --------------------------------------------------------------------------
 # 读接口（续）：搜索
 # --------------------------------------------------------------------------
-@app.get("/api/items/search", response_model=schemas.HomeResponse)
+@app.get("/api/items/search", response_model=schemas.HomeResponse, summary="搜索物品")
 def search_items(
     q: str = Query("", description="关键词，空串表示不按关键词过滤"),
-    type: str = Query("all", pattern="^(all|seek|find)$"),
+    type: str = Query("all", pattern="^(all|seek|find)$", description="筛选类型，默认 all"),
     conn: sqlite3.Connection = Depends(get_conn),
 ) -> dict:
     """搜索物品：对搜索索引文本做不区分大小写的子串匹配，再按类型筛选。
@@ -150,9 +153,9 @@ def search_items(
     return {"count": len(items), "items": items}
 
 
-@app.get("/api/items/{item_id}", response_model=schemas.DetailItem)
+@app.get("/api/items/{item_id}", response_model=schemas.DetailItem, summary="物品详情")
 def get_item(
-    item_id: int,
+    item_id: int = PathParam(description="物品 id"),
     conn: sqlite3.Connection = Depends(get_conn),
 ) -> dict:
     """取单条物品的完整详情。
@@ -181,7 +184,7 @@ def get_item(
 # --------------------------------------------------------------------------
 # 写接口：发布、标记已解决
 # --------------------------------------------------------------------------
-@app.post("/api/items", response_model=schemas.DetailItem, status_code=201)
+@app.post("/api/items", response_model=schemas.DetailItem, status_code=201, summary="发布信息")
 def create_item(
     payload: schemas.CreateRequest,
     conn: sqlite3.Connection = Depends(get_conn),
@@ -245,9 +248,9 @@ def create_item(
     return serialize.row_to_detail_item(row)
 
 
-@app.post("/api/items/{item_id}/resolve", response_model=schemas.DetailItem)
+@app.post("/api/items/{item_id}/resolve", response_model=schemas.DetailItem, summary="标记已解决")
 def resolve_item(
-    item_id: int,
+    item_id: int = PathParam(description="物品 id"),
     conn: sqlite3.Connection = Depends(get_conn),
 ) -> dict:
     """把一条信息标记为已解决。
@@ -283,7 +286,7 @@ def resolve_item(
 # --------------------------------------------------------------------------
 # 旧地址兼容：首页已更名为 index.html，兜住外部书签
 # --------------------------------------------------------------------------
-@app.get("/home.html")
+@app.get("/home.html", summary="旧地址跳转（首页已更名为 index.html）")
 def legacy_home() -> RedirectResponse:
     """旧地址兼容：首页由 home.html 更名为 index.html 后，把旧链接跳过去。
 
