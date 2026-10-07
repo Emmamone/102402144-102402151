@@ -25,7 +25,7 @@
 
 ### 1.1 当前实现进度
 
-**阶段 0（机械重构）已完成**，阶段 1 与阶段 2 的首页部分已落地：
+**阶段 0、1、2 已完成**——阶段 2 的三个读接口全部实现；阶段 3 只做了首页那一个页面：
 
 | 部分 | 状态 |
 | --- | --- |
@@ -33,8 +33,8 @@
 | `index.html` + `js/index.js` | **已实现**：列表由 `GET /api/items/home` 驱动 |
 | `search.html` · `detail.html` · `publish.html` · `success.html` 及其 js | **阶段 0 拆分已完成**（内容逐字迁入、共用代码提取到 `common.js`、行内脚本外置），**逻辑仍沿用原实现**（内嵌数据 + localStorage + `?id=new`）；改造为接口调用待阶段 3 / 4 |
 | 后端 `db.py` / `schemas.py` / `serialize.py` / `seed.py` / `main.py` | **已实现**：建表、播种、序列化、首页接口 |
-| `GET /api/items/home` | **已实现** |
-| `GET /api/items/search`、`GET /api/items/{id}`、`POST /api/items`、`POST /api/items/{id}/resolve` | **占位**：路径与响应形状已按设计固定，返回 501 + `{"code":"not_implemented","message":...}` |
+| `GET /api/items/home`、`GET /api/items/search`、`GET /api/items/{id}` | **已实现**：三个读接口全部可用 |
+| `POST /api/items`、`POST /api/items/{id}/resolve` | **占位**：路径与响应形状已按设计固定，返回 501 + `{"code":"not_implemented","message":...}` |
 | `tests/unit` · `tests/integration` · `tests/contract` | **已实现**，三层齐备 |
 
 改造前的 5 个页面源文件已全部迁入 `frontend/` 并删除，不再有"内容只存在于未跟踪文件里"的风险。
@@ -119,7 +119,7 @@ campus-lost-found/
 │   ├── integration/
 │   │   ├── test_seed.py             建表与播种的幂等性
 │   │   ├── test_items_read.py       首页列表、搜索、详情
-│   │   ├── test_placeholders.py     占位接口返回 501、旧地址跳转、静态页可达
+│   │   ├── test_placeholders.py     写接口占位返回 501、旧地址跳转、静态页可达
 │   │   └── test_items_write.py      发布、标记已解决（阶段 4）
 │   └── contract/
 │       └── test_api_contract.py     接口字段与前端渲染的契约

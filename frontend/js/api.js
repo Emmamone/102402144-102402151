@@ -50,7 +50,7 @@ var API = {
    * @param {string} type    'all' / 'seek' / 'find'
    * @returns {Promise<{count: number, items: Array}>}
    *
-   * 尚未实现（后端返回 501）。匹配由服务端做（对搜索索引文本做子串匹配），
+   * 已实现。匹配由服务端做（对搜索索引文本做子串匹配），返回的顺序也已排好；
    * 前端不要再对 data-keywords 做一次匹配，否则会变成双重过滤。
    */
   search: function (keyword, type) {
@@ -66,7 +66,7 @@ var API = {
    * @returns {Promise<Object>} DetailItem：含 code、publisher、masked、contact 等
    *          只在这里才出现的字段
    *
-   * 尚未实现（后端返回 501，id 不存在时会是 404）。404 时调用方应回落到 id=1。
+   * 已实现。id 不存在时返回 404，调用方应回落去取 1 号。
    * 不再有 'new' 这个特殊值——新发布的信息有真实 id。
    */
   detail: function (id) {

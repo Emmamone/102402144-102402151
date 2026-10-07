@@ -1,4 +1,7 @@
-"""尚未实现的接口：必须按设计注册在约定路径上，并返回 501。
+"""尚未实现的**写**接口：必须按设计注册在约定路径上，并返回 501。
+
+读接口（home / search / detail）在阶段 2 已实现，它们的测试在 ``test_items_read.py``；
+这里只剩阶段 4 要做的发布与标记已解决。
 
 这条测试的意义是**锁住接口契约**：后续阶段填实现时，路径与错误体形状不该再变；
 同时它也防止"路由忘了注册"被误判成 404。
@@ -9,8 +12,6 @@ from __future__ import annotations
 import pytest
 
 PLACEHOLDER_REQUESTS = [
-    ("GET", "/api/items/search", None),
-    ("GET", "/api/items/1", None),
     ("POST", "/api/items", None),
     ("POST", "/api/items/1/resolve", None),
 ]

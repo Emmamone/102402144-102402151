@@ -97,29 +97,68 @@ def list_home(
 # --------------------------------------------------------------------------
 # 占位：待后续阶段实现（路径与响应形状已按设计固定）
 # --------------------------------------------------------------------------
-@app.get("/api/items/search")
-def search_items_placeholder() -> None:
-    """搜索接口占位。
+@app.get("/api/items/search", response_model=schemas.HomeResponse)
+def search_items(
+    q: str = Query("", description="关键词，空串表示不按关键词过滤"),
+    type: str = Query("all", pattern="^(all|seek|find)$"),
+    conn: sqlite3.Connection = Depends(get_conn),
+) -> dict:
+    """搜索物品：对搜索索引文本做不区分大小写的子串匹配，再按类型筛选。
 
-    查询参数（待实现）：q —— 关键词，空串表示不过滤；type —— all / seek / find。
-    返回（待实现）：200 + {count, items[]}，按 search_order 排序。
-    当前：抛 501，提示「搜索接口 尚未实现」。前端 search.js 因此仍跑原实现。
-    规则见 docs/system-design.md 第 5.2 节。
+    查询参数：
+        q —— 关键词，默认空串（返回全部 8 条演示数据 + 用户新发布的数据）。
+        type —— all / seek / find，默认 all。
+
+    返回：200 + {count, items[]}，顺序为「用户新发布的在前，其次按 search_order」。
+
+    实现要点：
+        - 匹配用 instr(lower(keywords), lower(:q))，等价于改造前的
+          `data-keywords.toLowerCase().indexOf(keyword) !== -1`。SQLite 的 lower()
+          只处理 ASCII，中文不受影响，所以与前端行为一致。
+        - 与首页不同，搜索**包含 7、8 号**——它们只在搜索页与详情页出现，
+          所以这里没有 home_order 那道过滤。
     """
-    raise _not_implemented("搜索接口")
+    rows = conn.execute(
+        """
+        SELECT * FROM items
+        WHERE (:type = 'all' OR type = :type)
+          AND (:q = '' OR instr(lower(keywords), lower(:q)) > 0)
+        ORDER BY (source = 'user') DESC, search_order ASC, id DESC
+        """,
+        {"type": type, "q": q},
+    ).fetchall()
+
+    now = datetime.now()
+    items = [serialize.row_to_list_item(row, now) for row in rows]
+    return {"count": len(items), "items": items}
 
 
-@app.get("/api/items/{item_id}")
-def get_item_placeholder(item_id: int) -> None:
-    """详情接口占位。
+@app.get("/api/items/{item_id}", response_model=schemas.DetailItem)
+def get_item(
+    item_id: int,
+    conn: sqlite3.Connection = Depends(get_conn),
+) -> dict:
+    """取单条物品的完整详情。
 
-    路径参数：item_id —— 物品 id，正整数。
-    返回（待实现）：200 + DetailItem（含 code / publisher / masked / contact 等
-        只在这里才出现的字段）；id 不存在时 404。
-    当前：抛 501。前端 detail.js 因此仍读本页内嵌数据。
-    规则见 docs/system-design.md 第 5.3 节。
+    路径参数：
+        item_id —— 物品 id，正整数。
+
+    返回：200 + DetailItem（含 code / publisher / masked / contact 等只在这里才
+        出现的字段；详情页的「时间」是绝对时间，与卡片上的相对文案不同）。
+
+    异常：id 不存在时 404，错误体 {code: "not_found", message: "物品不存在"}。
+        前端收到 404 应回落去取 1 号，沿用改造前的容错行为。
+
+    约束：本路由是路径参数，必须注册在 /api/items/home 与 /api/items/search
+        这两个字面量路径**之后**，否则会把它们吃掉、并因整型转换失败返回 422。
     """
-    raise _not_implemented("详情接口")
+    row = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "not_found", "message": "物品不存在"},
+        )
+    return serialize.row_to_detail_item(row)
 
 
 @app.post("/api/items")
