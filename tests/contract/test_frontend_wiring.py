@@ -30,7 +30,7 @@ WIRED = {
     "search": True,     # 阶段 3 已接
     "detail": True,     # 阶段 3 已接
     "publish": False,   # 待阶段 4
-    "success": False,   # 待阶段 4
+    "success": True,    # 阶段 4 已接（按 ?id 查询）
 }
 
 #: 各页**是否还允许**出现 localStorage。
@@ -42,7 +42,7 @@ LOCAL_STORAGE_ALLOWED = {
     "search": False,    # 阶段 3 已清理
     "detail": True,     # 阶段 4 移除
     "publish": True,    # 阶段 4 移除
-    "success": True,    # 阶段 4 移除
+    "success": True,    # 过渡分支：?id 缺失时读 campusNewItem，任务 ④ 落地后清理
 }
 
 

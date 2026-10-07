@@ -7,6 +7,7 @@
 覆盖前端的三处渲染：
 - 列表卡片（首页与搜索页共用 ``renderCard``）→ ``CARD_REQUIRED``
 - 详情页 ``render(it)`` → ``DETAIL_REQUIRED``
+- 发布成功页 ``renderSummary(it)`` → ``SUMMARY_REQUIRED``
 - 错误体形状 → ``{code, message}``
 
 **前端新增对某字段的依赖时，必须同步在本文件加断言。**
@@ -131,3 +132,32 @@ def test_详情的时间标签只有两种取值(client):
 def test_详情与列表共用同一套编号规则(client):
     for item_id in (1, 8):
         assert client.get("/api/items/%d" % item_id).json()["code"] == "LF-%03d" % item_id
+
+
+# --------------------------------------------------------------------------
+# 发布成功页 renderSummary(it) 读取的字段
+# 该页只展示摘要，用不到完整描述与联系方式之外的那几个字段
+# --------------------------------------------------------------------------
+SUMMARY_REQUIRED = {
+    "id": int,
+    "name": str,
+    "type": str,
+    "time": str,
+    "place": str,
+    "masked": str,
+    "publish": str,
+}
+
+
+def test_成功页摘要所需的字段都在详情接口里(client):
+    body = client.get("/api/items/1").json()
+    for field, expected_type in SUMMARY_REQUIRED.items():
+        assert field in body, "成功页摘要依赖 %s，接口必须返回" % field
+        assert isinstance(body[field], expected_type), field
+
+
+def test_成功页用的是脱敏后的联系方式(client):
+    """摘要里展示的是 masked；原始 contact 只在点开详情后才出现。"""
+    body = client.get("/api/items/1").json()
+    assert body["masked"] == "138****6621"
+    assert body["masked"] != body["contact"]

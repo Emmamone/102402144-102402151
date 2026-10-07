@@ -33,7 +33,8 @@
 | `index.html` + `js/index.js` | **已实现**：列表由 `GET /api/items/home` 驱动 |
 | `detail.html` + `js/detail.js` | **已实现**：数据来自 `GET /api/items/{id}`（阶段 3）。内嵌的 8 条演示数据已删除，编号由服务端给出；404 时回落取 1 号。**唯一还读 localStorage 的是 `?id=new` 分支**（本机发布流程的过渡，阶段 4 随发布改造一并删除） |
 | `search.html` + `js/search.js` | **已实现**：数据来自 `GET /api/items/search`（阶段 3）。8 张硬编码卡片、前端关键词匹配、`insertLocalPost`、`applyResolved` 全部删除；卡片改由 `renderCard(item, 'search')` 渲染，条数与空状态由服务端 `count` 决定 |
-| `publish.html` · `success.html` 及其 js | **阶段 0 拆分已完成**（内容逐字迁入、共用代码提取到 `common.js`、行内脚本外置），**逻辑仍沿用原实现**（用 localStorage 暂存刚发布的那条）；改造在阶段 4 |
+| `success.html` + `js/success.js` | **已实现**（阶段 4）：按 `?id` 从 `GET /api/items/{id}` 取摘要，「查看详情」改为按真实 id 动态设置链接。带一级**过渡分支**：无 `?id` 时依次退回 localStorage 的 `campusNewItem`、写死的兜底摘要——因为发布页还没改成"带新 id 跳转"（任务 ④），④ 落地后删掉该分支 |
+| `publish.html` + `js/publish.js` | **阶段 0 拆分已完成**，**逻辑仍沿用原实现**（把刚发布的那条写进 localStorage）；改造在阶段 4，是发布链的最后一环 |
 | 后端 `db.py` / `schemas.py` / `serialize.py` / `seed.py` / `main.py` | **已实现**：建表、播种、序列化、首页接口 |
 | `GET /api/items/home`、`GET /api/items/search`、`GET /api/items/{id}` | **已实现**：三个读接口全部可用 |
 | `POST /api/items`、`POST /api/items/{id}/resolve` | **占位**：路径与响应形状已按设计固定，返回 501 + `{"code":"not_implemented","message":...}` |
@@ -112,12 +113,14 @@ campus-lost-found/
 │   ├── db.py                        连接管理 + 建表 DDL + init_db()
 │   ├── schemas.py                   Pydantic 请求模型与响应模型
 │   ├── serialize.py                 行 → 响应对象；相对时间、脱敏、搜索索引、图标/状态映射
-│   └── seed.py                      幂等写入 8 条演示数据
+│   ├── seed.py                      幂等写入 8 条演示数据
+│   └── __main__.py                  启动入口：确保数据库、起服务、开浏览器（python -m backend）
 ├── tests/                           测试层（与 frontend / backend / docs 平级）
 │   ├── conftest.py                  公共 fixture：临时数据库、TestClient、演示数据
 │   ├── unit/
 │   │   ├── test_serialize.py        脱敏、时间推导、编号生成、搜索索引拼装
-│   │   └── test_schemas.py          请求模型校验
+│   │   ├── test_schemas.py          请求模型校验
+│   │   └── test_paths.py            数据库/前端资源路径（含"冻结成 exe 后"的分支）
 │   ├── integration/
 │   │   ├── test_seed.py             建表与播种的幂等性
 │   │   ├── test_items_read.py       首页列表、搜索、详情
@@ -134,8 +137,11 @@ campus-lost-found/
 │   ├── system-design.md             本文档
 │   ├── development-plan.md          开发计划
 │   └── coding-standards.md          代码规范（含测试与文档同步要求）
+├── run_server.py                    打包入口（PyInstaller 的起点，只做一层转接）
+├── build_exe.py                     打包脚本：一条命令生成根目录的 exe
+├── campus-lost-found.exe            打包产物（运行时生成，不入库）
 ├── requirements.txt                 运行期依赖：fastapi、uvicorn
-├── requirements-dev.txt             开发与测试依赖：pytest、httpx、ruff（引用 requirements.txt）
+├── requirements-dev.txt             开发与测试依赖：pytest、httpx、ruff、pyinstaller
 ├── ruff.toml                        代码风格检查配置（PEP 8，规则集 E/F/W/I）
 ├── README.md                        运行说明
 ├── db.sqlite3                       运行时生成（已被 .gitignore 忽略）
@@ -744,6 +750,37 @@ ruff check .                            # 代码风格检查
 - `frontend/` 整个目录由静态挂载托管，主题样式文件随页面一起提供，无需额外配置。
 - 必须通过 http 访问；直接双击 HTML 文件（`file://`）会因浏览器限制导致接口请求失败。
 - 页面仍依赖外网 CDN（Tailwind 运行时、Iconify），离线环境页面样式与图标无法显示。
+
+### 11.1 打包成单文件 exe（Windows）
+
+```bash
+pip install -r requirements-dev.txt      # 含 pyinstaller
+.venv/Scripts/python.exe build_exe.py
+```
+
+产物是**仓库根目录**的 `campus-lost-found.exe`（约 17MB，不入库）。双击后：确保数据库存在
+（没有就建表并写入演示数据）→ 启动服务 → 用 **Google Chrome** 打开 `/index.html`。
+没装 Chrome 时退回系统默认浏览器，并在控制台说明用了哪个。
+
+**exe 与后续代码改动的关系**——这是这个打包方式里最要紧的一点：
+
+| 改动 | 需要重新打包吗 | 说明 |
+| --- | --- | --- |
+| 前端（HTML / CSS / JS） | **不需要** | exe 运行时优先使用**同级目录的 `frontend/`**。exe 就放在仓库根目录，所以它用的就是仓库里这份活的资源，改完刷新浏览器即可生效 |
+| 数据库内容 | 不需要 | `db.sqlite3` 落在 exe 同级目录；删掉它再双击就是全新一份 |
+| 后端 Python 代码 | **需要** | 代码是编译进 exe 的，这部分无法解耦。开发时用 `python -m backend`，交付时才打包 |
+
+两个目录都实现了"外部优先、包内兜底"的解析规则：
+
+| 资源 | 解析顺序 |
+| --- | --- |
+| 前端 | 环境变量 `CLF_FRONTEND_DIR` → **exe 同级 `frontend/`** → 包内 `sys._MEIPASS/frontend` → 开发时的仓库 `frontend/` |
+| 数据库 | 显式入参 → 环境变量 `CLF_DB_PATH` → exe 同级 `db.sqlite3`（开发时是仓库根目录的） |
+
+包里仍留了一份 `frontend/` 作兜底，所以把 exe 单独拷到别的机器上（旁边没有 `frontend/`）
+也能跑。启动横幅会打印**当前生效的是哪一份**前端资源，免得出现"改了页面却没生效"的困惑。
+
+命令行参数：`--host`、`--port`（默认 `127.0.0.1:8000`）、`--no-browser`（不自动开浏览器）。
 
 ## 12. 测试与验收清单
 
