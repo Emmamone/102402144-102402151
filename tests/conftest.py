@@ -23,6 +23,19 @@ if str(REPO_ROOT) not in sys.path:
 from backend import db, main, seed  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def uploads_dir(tmp_path, monkeypatch) -> Path:
+    """把上传目录指到临时目录——**任何测试都不许往仓库里写图片**。
+
+    自动生效（autouse）：漏加这个 fixture 的测试会悄悄把文件写进仓库的 uploads/，
+    而这种污染不会有任何报错提示，只会让下次 `git status` 多出一堆没用的图。
+    需要断言文件内容的测试可以直接把这个 fixture 当参数拿到路径。
+    """
+    target = tmp_path / "uploads"
+    monkeypatch.setenv("CLF_UPLOADS_DIR", str(target))
+    return target
+
+
 @pytest.fixture
 def db_path(tmp_path) -> Path:
     """一个建好表、播好演示数据的临时数据库文件。"""

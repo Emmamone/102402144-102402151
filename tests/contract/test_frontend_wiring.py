@@ -216,3 +216,115 @@ def test_全站不再有本机插入那一条的逻辑():
     """阶段 3 删掉了 insertLocalPost（列表改为只认服务端数据），这里是全站确认。"""
     for page in PAGES:
         assert not re.search(r"\binsertLocalPost\s*\(", page_js(page)), page
+
+
+# --------------------------------------------------------------------------
+# 图片上传（新增需求：发布页可上传一张图并裁切，详情页展示）
+# --------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "element_id",
+    ["fImage", "imagePicker", "cropPanel", "cropStage", "cropImage", "cropBox", "eImage"],
+)
+def test_发布页有图片选择与框选控件(element_id):
+    assert 'id="%s"' % element_id in page_html("publish"), "发布页缺少 #%s" % element_id
+
+
+@pytest.mark.parametrize(
+    "handle_id", ["cropHandleNw", "cropHandleNe", "cropHandleSw", "cropHandleSe"]
+)
+def test_框选有四个角柄(handle_id):
+    """四个角柄是"拖角等比例缩放"的视觉提示。
+
+    命中的判定不靠这些元素（它们在 CSS 里是 `pointer-events: none`），
+    而是在脚本里按坐标算热区——手指比 14px 的点大得多，热区要按屏幕像素放宽。
+    """
+    assert 'id="%s"' % handle_id in page_html("publish")
+
+
+def test_文件选择限定图片类型():
+    """`accept` 只是给选择器的提示，真正拦截在后端；但没有它用户会先选到一堆不可用的文件。"""
+    assert 'accept="image/jpeg,image/png,image/webp"' in page_html("publish")
+
+
+def test_框选比例与详情页展示比例一致():
+    """**跨文件的不变量**：详情页展示框的比例写在主题里（`.photo-frame` 的
+    `aspect-ratio: 4 / 3`），而发布页锁定框选比例的是 `publish.js` 的
+    `SELECT_ASPECT = 4 / 3`。两处必须相同——不一致的话，用户在发布页框到的内容
+    会在详情页被 object-cover 再裁一次，"所见即所得"就没了。
+
+    改比例时要同时改这两处（各自的注释里也互相指了）。
+    """
+    theme = (FRONTEND / "css" / "visual-theme.css").read_text(encoding="utf-8")
+
+    assert "aspect-ratio: 4 / 3" in theme, "主题里的展示框比例变了"
+    assert "SELECT_ASPECT = 4 / 3" in page_js("publish"), "发布页的框选比例没跟着改"
+    assert "photo-frame" in page_html("detail"), "详情页应使用主题里的展示框类"
+
+
+def test_框选是自己算的而不是引第三方库():
+    """项目的约束之一是零依赖（只有 CDN 的 Tailwind 与 Iconify）。"""
+    js = page_js("publish")
+    for fn in ("exportCroppedImage", "defaultSelection", "layoutSelection",
+               "startSelect", "moveSelect", "endSelect", "resetSelection",
+               "cornerAt", "resizeSelection"):
+        assert fn in js, "缺少框选函数 %s" % fn
+
+
+def test_框选时捕获指针并兜底检测松手():
+    """钉住一个真出现过的 bug。
+
+    没有捕获指针时：按住鼠标拖到图片**外面**松手，`pointerup` 落在别的元素上，
+    舞台收不到这个事件 → `dragMode` 永远清不掉 → 之后**不用按键**、只把鼠标移回
+    图内就会继续拖动选择框。
+
+    两道防线都要在：`pointerdown` 时捕获指针（框外也收得到 up），
+    以及 `pointermove` 里发现"鼠标键已松开"就直接结束手势。
+    """
+    js = page_js("publish")
+    assert "setPointerCapture" in js, "缺少指针捕获，框外松手会导致拖动态清不掉"
+    assert "event.buttons === 0" in js, "缺少松手兜底判断"
+    # 同类问题：多指同时按时第二根手指会覆盖手势起点，两根手指互相抢
+    assert "dragPointerId" in js, "缺少指针 id 守卫，多指操作会互相抢"
+
+
+def test_实现了缩放移动重选三种手势():
+    """拖角缩放 / 框内移动 / 框外重新框——三种手势都要在。
+
+    优先级（角柄 > 框内 > 框外）由 startSelect 保证：角柄的热区压在框边上，
+    若判在"框内"之后，贴着角按下去会被当成移动而不是缩放。
+    """
+    js = page_js("publish")
+    for mode in ("'resize'", "'move'", "'draw'"):
+        assert "dragMode = " + mode in js, "缺少手势 %s" % mode
+
+    corner_branch = js.index("dragMode = 'resize'")
+    move_branch = js.index("dragMode = 'move'")
+    assert corner_branch < move_branch, "角柄必须先于框内判定"
+
+
+def test_框选用的是源图像素坐标():
+    """框存成源图坐标（而不是屏幕坐标）才能扛住窗口缩放，导出时也不用再换算。"""
+    js = page_js("publish")
+    assert "naturalWidth" in js and "naturalHeight" in js
+    assert "toSourcePoint" in js
+
+
+def test_发布页把裁切结果交给上传接口():
+    js = page_js("publish")
+    assert "API.upload(" in js, "发布页应通过 API.upload 上传裁切结果"
+    assert "payload.image" in js, "上传拿到的文件名应放进发布请求的 image 字段"
+
+
+def test_详情页按_image_决定是否显示图片():
+    assert 'id="dImage"' in page_html("detail")
+    js = page_js("detail")
+    assert "it.image" in js
+    assert "'/uploads/'" in js, "图片地址应由文件名拼出"
+
+
+def test_图片按钮的错误态样式在占位里():
+    """脚本会切换这两个类（选图失败时标红），必须让 Tailwind 生成它们。"""
+    html = page_html("publish")
+    placeholder = html[html.rfind('<div class="hidden'):]
+    for cls in ("border-rose-400", "border-slate-200"):
+        assert cls in placeholder, cls

@@ -2,13 +2,13 @@
 
 本模块只做「装配」，不写 SQL、不做数据转换（见 docs/coding-standards.md 第 4.1 节）。
 
-当前实现进度：**只有首页接口 ``GET /api/items/home`` 是实现的**；搜索、详情、
-发布、标记已解决四个路由按 docs/system-design.md 第 5 节的定义注册为 501 占位，
-路径与响应形状已固定，后续阶段直接填充实现即可。
-
 路由声明顺序有一处硬性约束：``/api/items/home`` 这类字面量路径必须排在
 ``/api/items/{item_id}`` 之前，否则会被路径参数捕获并因整型转换失败返回 422。
 静态挂载（``/``）是兜底匹配，必须放在最后。
+
+上传的图片走 ``GET /uploads/{filename}`` 这个**接口**而不是 StaticFiles 挂载：
+挂载会在**导入时**就把目录固定下来，而数据库路径是**每请求**解析的——
+两者不一致会让测试没法各自指向临时目录。接口还能顺手做文件名白名单校验。
 """
 
 from __future__ import annotations
@@ -21,12 +21,12 @@ from pathlib import Path
 
 # FastAPI 的 Path 与 pathlib.Path 撞名；这里给前者起个别名，
 # 因为 pathlib.Path 在本模块里用得更频繁（拼前端资源目录、数据库路径）
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi import Path as PathParam
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import db, schemas, serialize
+from . import db, schemas, serialize, uploads
 
 
 def _frontend_dir() -> Path:
@@ -84,6 +84,15 @@ def get_conn():
         yield conn
     finally:
         conn.close()
+
+
+def get_uploads_dir() -> Path:
+    """上传图片的目录，**每个请求各解析一次**。
+
+    和数据库路径一样按「显式入参 > 环境变量 > 默认位置」解析，所以测试可以用
+    ``CLF_UPLOADS_DIR`` 把它指到临时目录，而不用去动仓库里的 ``uploads/``。
+    """
+    return db.resolve_uploads_dir()
 
 
 # --------------------------------------------------------------------------
@@ -182,12 +191,71 @@ def get_item(
 
 
 # --------------------------------------------------------------------------
+# 上传接口
+# --------------------------------------------------------------------------
+@app.post("/api/uploads", status_code=201, summary="上传图片")
+async def upload_image(
+    file: UploadFile = File(..., description="图片文件（JPG / PNG / WebP，不超过 5MB）"),
+    uploads_dir: Path = Depends(get_uploads_dir),
+) -> dict:
+    """接收一张图片存到上传目录，返回文件名与可访问地址。
+
+    请求：``multipart/form-data``，字段名 ``file``，一次一个文件。
+
+    返回：201 + ``{"filename": "<32位十六进制>.<ext>", "url": "/uploads/<filename>"}``
+        —— 前端把 ``filename`` 放进发布请求的 ``image`` 字段（见 5.4 节）。
+
+    校验（依次进行，任一条不过就 400）：
+        1. MIME 在白名单内（jpg / png / webp）；
+        2. 内容非空；
+        3. 不超过 5MB；
+        4. **文件头魔数与声明的类型相符**——只信 ``Content-Type`` 等于让调用方
+           自证合法，把任意文件标成 ``image/png`` 就能混进来。
+
+    异常：错误体是项目统一的 ``{code, message}``；422 仍留给 Pydantic 的字段校验。
+
+    约束：本接口**不做鉴权**（与全站一致），文件名由服务端生成、客户端传什么都不作数。
+    """
+    content_type = file.content_type or ""
+    if uploads.extension_for(content_type) is None:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "invalid_image", "message": "仅支持 JPG / PNG / WebP 图片"},
+        )
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "invalid_image", "message": "图片内容为空"},
+        )
+    if len(data) > uploads.MAX_UPLOAD_BYTES:
+        # 文案跟着常量走：改了上限，提示自动跟着改，不会留在"5MB"上对不上
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "invalid_image",
+                "message": "图片不能超过 %dMB" % (uploads.MAX_UPLOAD_BYTES // 1024 // 1024),
+            },
+        )
+    if not uploads.looks_like_image(content_type, data):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "invalid_image", "message": "文件内容不是有效的图片"},
+        )
+
+    filename = uploads.save_image(data, content_type, db.ensure_uploads_dir(uploads_dir))
+    return {"filename": filename, "url": "/uploads/" + filename}
+
+
+# --------------------------------------------------------------------------
 # 写接口：发布、标记已解决
 # --------------------------------------------------------------------------
 @app.post("/api/items", response_model=schemas.DetailItem, status_code=201, summary="发布信息")
 def create_item(
     payload: schemas.CreateRequest,
     conn: sqlite3.Connection = Depends(get_conn),
+    uploads_dir: Path = Depends(get_uploads_dir),
 ) -> dict:
     """发布一条信息。
 
@@ -209,7 +277,18 @@ def create_item(
     - ``keywords``：name + category + place + desc + 类型同义词，供搜索用。
     - ``source`` / ``home_order`` / ``search_order``：'user' / NULL / NULL，
       排序时因此排在最前（见 system-design 第 4.3 节）。
+
+    例外：``image`` 是**前端提供**的（上传接口返回的文件名），服务端只负责校验它
+    确实存在于上传目录（不在就 400）；不传或传空表示这条信息没有配图。
     """
+    # 文件名形状已由 schemas 的校验器挡过（纯函数、不碰文件系统）；
+    # "这个文件到底在不在"只有到这里才知道，而且这属于请求内容有问题 → 400 而非 422
+    if payload.image is not None and not (Path(uploads_dir) / payload.image).is_file():
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "invalid_image", "message": "图片不存在，请重新上传"},
+        )
+
     now = datetime.now()
     values = {
         "name": payload.name,
@@ -230,6 +309,7 @@ def create_item(
         "keywords": serialize.build_keywords(
             payload.name, payload.category, payload.place, payload.desc, payload.type
         ),
+        "image": payload.image,
         "source": "user",
         "home_order": None,
         "search_order": None,
@@ -281,6 +361,35 @@ def resolve_item(
         row = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
 
     return serialize.row_to_detail_item(row)
+
+
+# --------------------------------------------------------------------------
+# 读取上传的图片
+# --------------------------------------------------------------------------
+@app.get("/uploads/{filename}", summary="读取上传的图片")
+def get_uploaded_image(
+    filename: str,
+    uploads_dir: Path = Depends(get_uploads_dir),
+) -> FileResponse:
+    """按文件名返回上传的图片。
+
+    路径参数：``filename`` —— 上传接口返回的那个文件名。
+
+    返回：200 + 图片字节（``Content-Type`` 按扩展名推断）。
+
+    异常：文件名形状不合法、或文件不存在，都返回 404 + ``{code, message}``。
+        两种情况**故意用同一个响应**：不告诉调用方"这个名字格式对但文件不在"，
+        免得能被用来探测哪些文件存在。
+
+    约束：文件名必须匹配服务端生成的形状（32 位十六进制 + 白名单扩展名），
+        路径穿越因此不可能发生——外部输入压根参与不了路径拼接。
+    """
+    if not uploads.is_valid_filename(filename) or not (Path(uploads_dir) / filename).is_file():
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "not_found", "message": "图片不存在"},
+        )
+    return FileResponse(Path(uploads_dir) / filename)
 
 
 # --------------------------------------------------------------------------

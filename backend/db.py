@@ -9,6 +9,10 @@
 2. 环境变量 ``CLF_DB_PATH``
 3. ``default_db_path()`` —— 开发时是仓库根目录的 ``db.sqlite3``，
    打包成 exe 后是 exe 同级目录（见该函数的说明）
+
+**上传图片的目录**（``uploads/``）也在这里解析，用的是同一套"开发时在仓库里、
+打包后在 exe 旁边"的规则——它和数据库一样属于**运行时数据**，两者必须待在一起，
+否则备份/删除时会只搬走一半。
 """
 
 from __future__ import annotations
@@ -19,6 +23,9 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+#: 上传图片的目录名（与数据库同级）
+UPLOADS_DIRNAME = "uploads"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS items (
@@ -39,6 +46,7 @@ CREATE TABLE IF NOT EXISTS items (
   masked       TEXT    NOT NULL,
   contact      TEXT    NOT NULL,
   keywords     TEXT    NOT NULL,
+  image        TEXT,                          -- 上传的图片文件名；没有图时为 NULL
   source       TEXT    NOT NULL DEFAULT 'demo' CHECK (source IN ('demo','user')),
   home_order   INTEGER,
   search_order INTEGER,
@@ -73,6 +81,38 @@ def resolve_db_path(path: str | Path | None = None) -> Path:
     return Path(env_path) if env_path else default_db_path()
 
 
+def default_uploads_dir() -> Path:
+    """默认的上传图片目录：与数据库同级（开发时在仓库根，打包后在 exe 旁边）。
+
+    规则和 ``default_db_path()`` 完全一致，理由也一样——见该函数的说明。
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent / UPLOADS_DIRNAME
+    return REPO_ROOT / UPLOADS_DIRNAME
+
+
+def resolve_uploads_dir(path: str | Path | None = None) -> Path:
+    """按 显式入参 > 环境变量 ``CLF_UPLOADS_DIR`` > ``default_uploads_dir()`` 解析。
+
+    测试用环境变量把它指到临时目录，这样跑测试不会往仓库里塞图片。
+    """
+    if path is not None:
+        return Path(path)
+    env_path = os.environ.get("CLF_UPLOADS_DIR")
+    return Path(env_path) if env_path else default_uploads_dir()
+
+
+def ensure_uploads_dir(path: str | Path | None = None) -> Path:
+    """确保上传目录存在并返回它。
+
+    必须**在构造 StaticFiles 之前**调用：Starlette 在构造时就校验目录是否存在，
+    目录不在会直接抛错（表现为应用起不来，而不是某个请求 404）。
+    """
+    target = resolve_uploads_dir(path)
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
 def connect(path: str | Path | None = None) -> sqlite3.Connection:
     """打开一个连接。
 
@@ -86,10 +126,33 @@ def connect(path: str | Path | None = None) -> sqlite3.Connection:
 
 
 def init_db(path: str | Path | None = None) -> None:
-    """建表与建索引（可重复执行）。"""
+    """建表、建索引，并补齐后加的列（可重复执行）。
+
+    **为什么要单独做迁移**：``CREATE TABLE IF NOT EXISTS`` 对已存在的表是空操作，
+    所以老库（比如仓库根目录那个 ``db.sqlite3``）不会因为 SCHEMA 里多了一列就自动
+    获得该列——之后任何 ``SELECT *`` + 按列名取值的地方都会 KeyError。
+    这里用 ``PRAGMA table_info`` 查一遍，缺了就 ``ALTER TABLE`` 补上；
+    新库由 SCHEMA 直接建好，这段相当于空转。
+    """
     conn = connect(path)
     try:
         conn.executescript(SCHEMA)
+        _migrate(conn)
         conn.commit()
     finally:
         conn.close()
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """把后加的列补进已存在的表里。只增列，不改类型、不删列。
+
+    参数：conn —— 已打开的连接（由调用方负责提交）。
+    返回：无。
+
+    注意：``ALTER TABLE ADD COLUMN`` 加的列**必须可空**（或带默认值）——
+    否则已有行无法满足约束。``image`` 正是可空的：演示数据与不支持图片的旧数据
+    都靠 NULL 表示"没有图"。
+    """
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
+    if "image" not in existing:
+        conn.execute("ALTER TABLE items ADD COLUMN image TEXT")

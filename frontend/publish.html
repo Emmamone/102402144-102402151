@@ -98,6 +98,30 @@
 <p class="mt-1 text-[11px] text-slate-400">联系方式仅对点击「联系发布者」的同学展示</p>
 <p class="hidden mt-1 text-[11px] text-rose-500" id="eContact">请填写联系方式，方便同学联系你</p>
 </div>
+<!-- 物品图片（选填，最多一张）。选完图在下面的框里拖动/缩放，
+     框里看到的就是详情页会显示的样子 -->
+<div class="mt-4">
+<label class="block text-[13px] font-medium text-slate-700">物品图片 <span class="text-slate-400">（选填，最多一张）</span></label>
+<input accept="image/jpeg,image/png,image/webp" class="hidden" id="fImage" onchange="onPickImage(event)" type="file"/>
+<button class="mt-2 flex items-center justify-center gap-1.5 w-full h-11 rounded-xl border border-slate-200 bg-white text-[13px] font-medium text-slate-600 active:bg-slate-50" id="imagePicker" onclick="pickImage()" type="button">
+<iconify-icon class="text-[18px]" icon="mdi:image-plus-outline"></iconify-icon>选择图片
+</button>
+<div class="hidden mt-2" id="cropPanel">
+<!-- 图片按原比例完整显示，用户直接在图上拖一个框；框里就是会发布出去的画面 -->
+<div class="relative w-full overflow-hidden rounded-xl bg-slate-100 touch-none" id="cropStage" onpointercancel="endSelect(event)" onpointerdown="startSelect(event)" onpointermove="moveSelect(event)" onpointerup="endSelect(event)">
+<img alt="待框选预览" class="block w-full h-auto select-none pointer-events-none" draggable="false" id="cropImage"/>
+<div id="cropBox">
+<span id="cropHandleNw"></span><span id="cropHandleNe"></span><span id="cropHandleSw"></span><span id="cropHandleSe"></span>
+</div>
+</div>
+<div class="mt-2 flex items-center justify-between gap-2">
+<p class="text-[11px] text-slate-400">图上拖动框选；拖四角可等比例缩放，框内可移动</p>
+<button class="shrink-0 text-[12px] text-slate-500 underline" onclick="resetSelection()" type="button">重新框选</button>
+</div>
+<button class="mt-2 w-full h-9 rounded-xl border border-slate-200 bg-white text-[12px] font-medium text-slate-500 active:bg-slate-50" onclick="removeImage()" type="button">移除图片</button>
+</div>
+<p class="hidden mt-1 text-[11px] text-rose-500" id="eImage">图片处理失败，请重新选择</p>
+</div>
 </section>
 <p class="px-1 text-[11px] leading-relaxed text-slate-400">
           发布即表示你确认信息真实。请勿填写他人隐私信息，也请勿用于商业用途。

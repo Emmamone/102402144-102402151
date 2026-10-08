@@ -41,7 +41,7 @@ REPO_ROOT = Path(__file__).resolve().parent
 ENTRY_SCRIPT = REPO_ROOT / "run_server.py"
 APP_NAME = "campus-lost-found"
 
-#: uvicorn 里那些靠名字动态导入、静态分析发现不了的模块
+#: 那些靠名字动态导入、静态分析发现不了的模块
 HIDDEN_IMPORTS = (
     "uvicorn.logging",
     "uvicorn.loops.auto",
@@ -51,6 +51,11 @@ HIDDEN_IMPORTS = (
     "uvicorn.protocols.websockets.auto",
     "uvicorn.lifespan.on",
     "uvicorn.lifespan.off",
+    # Starlette 在 try/except 里导入 multipart 解析器（上传接口用）。
+    # 漏了的话 exe 一启动就会报"需要 python-multipart"——FastAPI 是在**定义路由时**
+    # 检查这个依赖的，所以不是"用到才报错"，而是根本起不来
+    "python_multipart",
+    "python_multipart.multipart",
 )
 
 

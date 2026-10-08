@@ -49,10 +49,12 @@ function applyStatus(state) {
  * @param {Object} it 服务端返回的 DetailItem
  * @returns {void}
  *
- * 除了填字段，还做两件事：
+ * 除了填字段，还做三件事：
  * 1. 每次渲染都把联系方式面板复原成"未展开"——展开是看一眼就够的动作，
  *    不该跨条目残留。
  * 2. 状态直接取数据自身的 `status`：服务端是状态的唯一来源。
+ * 3. 按 `image` 决定图片区显示还是隐藏。无图时必须**移除 src**，
+ *    否则切到下一条时浏览器会继续显示上一条的图。
  *
  * 约束：这里逐个 `getElementById` 写 textContent，元素 id 与页面严重耦合，
  * 改 HTML 时要一起改（见 docs/system-design.md 第 7.2 节的 id 清单）。
@@ -79,6 +81,18 @@ function render(it) {
   document.getElementById('dTime').textContent = it.time;
   document.getElementById('dPlace').textContent = it.place;
   document.getElementById('dDesc').textContent = it.desc;
+
+  // 配图：有就显示，没有（或文件已不在）就整块隐藏
+  var imageWrap = document.getElementById('dImageWrap');
+  var image = document.getElementById('dImage');
+  if (it.image) {
+    image.src = '/uploads/' + it.image;
+    image.alt = (it.name || '物品') + '的照片';
+    imageWrap.classList.remove('hidden');
+  } else {
+    image.removeAttribute('src');     // 清掉上一条的图，避免切条目时残留
+    imageWrap.classList.add('hidden');
+  }
 
   document.getElementById('dAvatar').textContent = it.avatar;
   document.getElementById('dPublisher').textContent = it.publisher;
@@ -181,5 +195,10 @@ function markResolved() {
 }
 
 window.addEventListener('DOMContentLoaded', function () {
+  // 图片加载失败（文件被删、地址失效）时隐藏整块，而不是留一个破图占位。
+  // 只在启动时绑一次：render 每次渲染都会重设 src，重复绑定没必要
+  document.getElementById('dImage').addEventListener('error', function () {
+    document.getElementById('dImageWrap').classList.add('hidden');
+  });
   loadItem();
 });

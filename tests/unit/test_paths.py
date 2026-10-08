@@ -94,3 +94,45 @@ def test_环境变量可以临时指定前端目录(monkeypatch, tmp_path):
     monkeypatch.setenv("CLF_FRONTEND_DIR", str(tmp_path / "elsewhere"))
 
     assert backend_main._frontend_dir() == tmp_path / "elsewhere"
+
+
+# --------------------------------------------------------------------------
+# 上传图片的目录
+# --------------------------------------------------------------------------
+def test_开发时上传目录在仓库根(monkeypatch):
+    monkeypatch.delattr(sys, "frozen", raising=False)
+    monkeypatch.delenv("CLF_UPLOADS_DIR", raising=False)
+
+    assert db.default_uploads_dir() == db.REPO_ROOT / "uploads"
+
+
+def test_打包后上传目录在_exe_旁边(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", str(tmp_path / "campus-lost-found.exe"))
+    monkeypatch.delenv("CLF_UPLOADS_DIR", raising=False)
+
+    assert db.default_uploads_dir().resolve() == (tmp_path / "uploads").resolve()
+
+
+def test_上传目录与数据库同级(monkeypatch):
+    """两者都是运行时数据，必须待在一起——否则备份/删除时会只搬走一半。"""
+    monkeypatch.delattr(sys, "frozen", raising=False)
+    monkeypatch.delenv("CLF_DB_PATH", raising=False)
+    monkeypatch.delenv("CLF_UPLOADS_DIR", raising=False)
+
+    assert db.default_uploads_dir().parent == db.default_db_path().parent
+
+
+def test_上传目录可以用环境变量覆盖(monkeypatch, tmp_path):
+    """测试就靠这条把上传目录指到临时目录，不往仓库里写图片。"""
+    monkeypatch.setenv("CLF_UPLOADS_DIR", str(tmp_path / "elsewhere"))
+
+    assert db.resolve_uploads_dir() == tmp_path / "elsewhere"
+
+
+def test_ensure_uploads_dir_会把目录建出来(tmp_path):
+    """StaticFiles 会校验目录存在，所以构造之前必须建好。"""
+    target = db.ensure_uploads_dir(tmp_path / "a" / "b")
+
+    assert target.is_dir()
+    assert target == tmp_path / "a" / "b"

@@ -137,3 +137,44 @@ body {
 #phone-canvas #toast { border-radius: 10px !important; background: var(--forest) !important; box-shadow: 0 8px 24px rgba(23,63,55,.22); }
 #phone-canvas #emptyState .w-16 { border: 1px dashed #d7cbbb !important; background: #fffdf8 !important; }
 #phone-canvas .text-rose-500 { color: #c84c36 !important; }
+
+/* 详情页的物品照片展示框。
+ *
+ * **注意比例是两处定义的**：这里管详情页的展示框，而发布页锁定框选比例的那个值
+ * 在 publish.js 的 `SELECT_ASPECT` 里。两处必须一致——不一致的话，用户在发布页
+ * 框到的内容会在详情页被 object-cover 再裁一次，"所见即所得"就没了。
+ * tests/contract/test_frontend_wiring.py 里有一条测试钉着这个不变量。 */
+.photo-frame {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 框选遮罩：框内用主题的朱砂橙做一个半透明高亮，框外用一层极大的 box-shadow 压暗——
+ * 这样不用额外 DOM 就能做出"只有框里是亮的"的裁切观感。
+ * 颜色直接取主题变量：Tailwind 的 bg-blue-600/20 这类带透明度的写法**不会被主题覆盖**
+ * （主题只映射整类名），直接用会冒出一块默认蓝，与整站配色不搭。 */
+#phone-canvas #cropBox {
+  position: absolute;
+  border: 2px solid var(--accent);
+  background: rgba(232, 97, 67, .16);
+  box-shadow: 0 0 0 9999px rgba(24, 46, 42, .42);
+  pointer-events: none;      /* 事件一律交给舞台处理，"拖角/框内/框外"由坐标判定 */
+}
+
+/* 四个角柄：纯视觉。
+ * 命中判定不靠它们（它们 pointer-events: none），而是在脚本里按坐标算——
+ * 因为手指比 14px 的点大得多，实际热区要按屏幕像素放宽（见 publish.js 的 HANDLE_HIT_PX）。 */
+#phone-canvas #cropBox span {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border-radius: 3px;
+  background: var(--accent);
+  border: 2px solid #fffdf8;
+}
+#phone-canvas #cropHandleNw { left: -8px; top: -8px; cursor: nwse-resize; }
+#phone-canvas #cropHandleNe { right: -8px; top: -8px; cursor: nesw-resize; }
+#phone-canvas #cropHandleSw { left: -8px; bottom: -8px; cursor: nesw-resize; }
+#phone-canvas #cropHandleSe { right: -8px; bottom: -8px; cursor: nwse-resize; }

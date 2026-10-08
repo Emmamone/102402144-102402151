@@ -59,6 +59,11 @@ def ensure_database(path: str | Path | None = None) -> bool:
     """
     resolved = db.resolve_db_path(path)
 
+    # **先建表/补列**，不管库里有没有数据都要跑：init_db 里的迁移负责把后加的列
+    # 补进已存在的表（CREATE TABLE IF NOT EXISTS 对老库是空操作）。放在这段最前面，
+    # 是因为"库里已有数据就直接返回"的分支会跳过它——老库就永远拿不到 image 列。
+    db.init_db(resolved)
+
     if Path(resolved).exists():
         try:
             conn = sqlite3.connect(resolved)
