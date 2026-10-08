@@ -20,6 +20,7 @@ PUBLISH = "/api/items"
 DETAIL_FIELDS = {
     "id", "code", "name", "type", "status", "icon", "category", "timeLabel",
     "time", "place", "publish", "desc", "publisher", "avatar", "masked", "contact",
+    "image",
 }
 
 
@@ -240,3 +241,60 @@ def test_标记后的状态也反映在列表里(client):
 
     item = next(i for i in client.get("/api/items/home").json()["items"] if i["id"] == 5)
     assert item["status"] == "resolved"
+
+
+# --------------------------------------------------------------------------
+# 发布时配图（新增需求：发布页可上传一张图片）
+# 前端是两步：先 POST /api/uploads 拿文件名，再把它放进发布请求的 image 字段
+# --------------------------------------------------------------------------
+JPEG_BYTES = b"\xff\xd8\xff\xe0" + b"\x00" * 32
+
+
+def upload_one_image(client) -> str:
+    """先传一张图，返回服务端生成的文件名（模拟前端的第一步）。"""
+    response = client.post("/api/uploads", files={"file": ("p.jpg", JPEG_BYTES, "image/jpeg")})
+    return response.json()["filename"]
+
+
+def test_不配图时_image_是_null(client, create_payload):
+    """图片是选填的——不传就该是 null，前端据此隐藏图片区。"""
+    assert publish(client, create_payload).json()["image"] is None
+
+
+def test_图片字段传空串等同于不配图(client, create_payload):
+    assert publish(client, create_payload, image="   ").json()["image"] is None
+
+
+def test_带上传的图片发布后文件名被保存(client, create_payload):
+    filename = upload_one_image(client)
+
+    body = publish(client, create_payload, image=filename).json()
+
+    assert body["image"] == filename
+    # 重新查一次，确认真的落了库而不是只在返回值里
+    assert client.get("/api/items/%d" % body["id"]).json()["image"] == filename
+
+
+def test_图片字段参与了字段集完整性(client, create_payload):
+    """带图与不带图，返回的字段集都必须完整。"""
+    filename = upload_one_image(client)
+
+    assert set(publish(client, create_payload, image=filename).json()) == DETAIL_FIELDS
+    assert set(publish(client, create_payload).json()) == DETAIL_FIELDS
+
+
+def test_图片文件名形状不合法返回_422(client, create_payload):
+    """形状问题是请求内容不合法，由 Pydantic 挡 → 422。"""
+    assert publish(client, create_payload, image="../main.py").status_code == 422
+
+
+def test_引用了不存在的图片返回_400(client, create_payload):
+    """形状对但文件不在——这是"引用了不存在的东西"，用业务错误的 400。"""
+    response = publish(client, create_payload, image="a" * 32 + ".jpg")
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "invalid_image"
+
+
+def test_演示数据都没有配图(client):
+    assert client.get("/api/items/1").json()["image"] is None

@@ -116,6 +116,8 @@ DETAIL_REQUIRED = {
     "avatar": str,
     "masked": str,
     "contact": str,
+    # 图片文件名；没有配图时是 None，所以类型写成"字符串或 None"
+    "image": (str, type(None)),
 }
 
 
@@ -189,3 +191,20 @@ def test_写路径返回的字段类型同样正确(client, create_payload):
                  client.post("/api/items/5/resolve").json()):
         for field, expected_type in DETAIL_REQUIRED.items():
             assert isinstance(body[field], expected_type), field
+
+
+# --------------------------------------------------------------------------
+# 图片字段（新增需求）
+# --------------------------------------------------------------------------
+def test_没有配图时_image_是_null(client):
+    """前端靠"image 为 null"决定隐藏图片区，所以这个取值本身是契约的一部分。"""
+    assert client.get("/api/items/1").json()["image"] is None
+
+
+def test_列表项不带图片字段(client):
+    """卡片模板不显示图片，所以 ListItem 不该多出 image——多一个字段就是白涨载荷。"""
+    items = client.get("/api/items/home").json()["items"]
+
+    assert items
+    for item in items:
+        assert "image" not in item

@@ -65,6 +65,12 @@
 <iconify-icon class="text-[17px] text-blue-600" icon="mdi:text-box-outline"></iconify-icon>物品描述
           </h2>
 <p class="mt-2 text-[13px] leading-relaxed text-slate-600" id="dDesc">—</p>
+<!-- 物品照片。比例用与发布页裁切框同一个 .photo-frame（4:3），
+     而上传的就是按这个比例裁好的，所以这里不会再裁掉任何内容；
+     没有配图时整块隐藏 -->
+<div class="photo-frame hidden mt-3 rounded-xl" id="dImageWrap">
+<img alt="物品照片" class="w-full h-full object-cover" id="dImage"/>
+</div>
 </section>
 <!-- 联系方式：默认只展示脱敏串（服务端返回的 masked）；
      点「联系发布者」后隐藏按钮、展开下方面板，见 js/detail.js 的 revealContact -->

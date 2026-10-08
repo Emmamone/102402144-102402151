@@ -29,6 +29,7 @@ EXPECTED_PATHS = (
     "/api/items/{item_id}",
     "/api/items",
     "/api/items/{item_id}/resolve",
+    "/api/uploads",
 )
 
 

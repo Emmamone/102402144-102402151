@@ -25,19 +25,20 @@
 
 ### 1.1 当前实现进度
 
-**阶段 0–4 全部完成**——五个接口落地、五个页面的读写改造全部完成、**没有任何页面再使用 localStorage**；只剩阶段 5（README、手工回归、重新打包 exe）：
+**阶段 0–4 完成；阶段 6（物品图片，v1.1 的需求变更）也已完成**——7 个接口落地、五个页面的读写改造完成、没有任何页面再使用 localStorage；阶段 5（README、手工回归、重新打包 exe）仍是收尾项：
 
 | 部分 | 状态 |
 | --- | --- |
 | `frontend/` 5 个页面 + `css/visual-theme.css` + 7 个 js | **结构已就位**：一页一 html、一页一 js、主题单份；HTML 中无内联 `<style>` 与内联脚本 |
 | `index.html` + `js/index.js` | **已实现**：列表由 `GET /api/items/home` 驱动 |
-| `detail.html` + `js/detail.js` | **已实现**（读：阶段 3；写：阶段 4）：读走 `GET /api/items/{id}`（404 回落 1 号），标记已解决走 `POST /api/items/{id}/resolve`。内嵌演示数据、`?id=new`、`campusResolved` 全部删除 |
+| `detail.html` + `js/detail.js` | **已实现**（读：阶段 3；写：阶段 4）：读走 `GET /api/items/{id}`（404 回落 1 号），标记已解决走 `POST /api/items/{id}/resolve`。**v1.1**：有配图时在「物品描述」下方展示，无图（或文件已删）时整块隐藏 |
 | `search.html` + `js/search.js` | **已实现**：数据来自 `GET /api/items/search`（阶段 3）。8 张硬编码卡片、前端关键词匹配、`insertLocalPost`、`applyResolved` 全部删除；卡片改由 `renderCard(item, 'search')` 渲染，条数与空状态由服务端 `count` 决定 |
-| `publish.html` + `js/publish.js` | **已实现**（阶段 4）：提交走 `POST /api/items`，成功后带新 id 跳到成功页；删掉了本地暂存与前端算的发布时间 |
+| `publish.html` + `js/publish.js` | **已实现**（阶段 4：提交走 `POST /api/items`，成功后带新 id 跳到成功页）。**v1.1 新增物品图片**：选图后在图上**拖框选**出要保留的部分（**拖四角等比例缩放**、框内拖动移动、框外拖动重新框、拖太小会撤回），导出 JPEG 先传到 `POST /api/uploads`，再把文件名放进发布请求的 `image` —— 框选比例锁 4:3（`SELECT_ASPECT`，与详情页展示框的 `.photo-frame` 一致，有测试钉着这条不变量） |
 | `success.html` + `js/success.js` | **已实现**（阶段 4）：按 `?id` 从 `GET /api/items/{id}` 取摘要，「查看详情」按真实 id 动态设置；无 `?id` 或查询失败时用写死的兜底摘要 |
-| 后端 `db.py` / `schemas.py` / `serialize.py` / `seed.py` / `main.py` | **已实现**：建表、播种、序列化、首页接口 |
-| `GET /api/items/home`、`GET /api/items/search`、`GET /api/items/{id}` | **已实现**：三个读接口全部可用 |
-| `POST /api/items`、`POST /api/items/{id}/resolve` | **已实现**（阶段 4 的后端部分）：五个接口全部落地，不再有占位路由 |
+| 后端 `db.py` / `schemas.py` / `serialize.py` / `seed.py` / `uploads.py` / `main.py` | **已实现**：建表（含 `image` 列与迁移）、播种、序列化、图片校验与落盘、7 个接口 |
+| `GET /api/items/home`、`GET /api/items/search`、`GET /api/items/{id}` | **已实现**：三个读接口 |
+| `POST /api/items`、`POST /api/items/{id}/resolve` | **已实现**（阶段 4） |
+| `POST /api/uploads`、`GET /uploads/{filename}` | **已实现**（v1.1，阶段 6）：图片上传与读取 |
 | `tests/unit` · `tests/integration` · `tests/contract` | **已实现**，三层齐备 |
 
 改造前的 5 个页面源文件已全部迁入 `frontend/` 并删除，不再有"内容只存在于未跟踪文件里"的风险。
@@ -109,23 +110,26 @@ campus-lost-found/
 │       └── success.js               成功页：fillSummary
 ├── backend/                         后端
 │   ├── __init__.py
-│   ├── main.py                      FastAPI 应用、5 个路由、静态挂载
+│   ├── main.py                      FastAPI 应用、8 个路由、静态挂载
 │   ├── db.py                        连接管理 + 建表 DDL + init_db()
 │   ├── schemas.py                   Pydantic 请求模型与响应模型
 │   ├── serialize.py                 行 → 响应对象；相对时间、脱敏、搜索索引、图标/状态映射
 │   ├── seed.py                      幂等写入 8 条演示数据
+│   ├── uploads.py                   图片的类型白名单、文件名生成、文件头校验、落盘
 │   └── __main__.py                  启动入口：确保数据库、起服务、开浏览器（python -m backend）
 ├── tests/                           测试层（与 frontend / backend / docs 平级）
 │   ├── conftest.py                  公共 fixture：临时数据库、TestClient、演示数据、发布请求体
 │   ├── unit/
 │   │   ├── test_serialize.py        脱敏、时间推导、编号生成、搜索索引拼装
 │   │   ├── test_schemas.py          请求模型校验
-│   │   └── test_paths.py            数据库/前端资源路径（含"冻结成 exe 后"的分支）
+│   │   ├── test_uploads.py          图片类型白名单、文件名生成、文件头校验
+│   │   └── test_paths.py            数据库/前端资源/上传目录的路径（含"冻结成 exe 后"的分支）
 │   ├── integration/
 │   │   ├── test_seed.py             建表与播种的幂等性
 │   │   ├── test_items_read.py       首页列表、搜索、详情
 │   │   ├── test_static_serving.py   页面/主题/脚本能通过 HTTP 取到、旧地址跳转
-│   │   └── test_items_write.py      发布、标记已解决（阶段 4）
+│   │   ├── test_upload.py           图片上传与读取（含各类拒绝路径）
+│   │   └── test_items_write.py      发布、标记已解决（含配图）
 │   └── contract/
 │       ├── test_api_contract.py     接口字段与前端渲染的契约
 │       ├── test_frontend_wiring.py  前端静态检查（内联块 / 资源存在 / 迁移进度）
@@ -176,6 +180,7 @@ CREATE TABLE IF NOT EXISTS items (
   masked       TEXT    NOT NULL,              -- 脱敏联系方式（默认展示）
   contact      TEXT    NOT NULL,              -- 完整联系方式（点击展开后展示）
   keywords     TEXT    NOT NULL,              -- 空格分隔的搜索索引文本
+  image        TEXT,                          -- 上传的图片文件名；没有图时为 NULL
   source       TEXT    NOT NULL DEFAULT 'demo' CHECK (source IN ('demo','user')),
                                               -- 数据来源：演示数据 / 用户新发布
   home_order   INTEGER,                       -- 演示数据在首页的顺序 1~6；不在首页与用户新发布为 NULL
@@ -186,6 +191,16 @@ CREATE TABLE IF NOT EXISTS items (
 CREATE INDEX IF NOT EXISTS idx_items_home   ON items(home_order);
 CREATE INDEX IF NOT EXISTS idx_items_search ON items(search_order);
 ```
+
+> **迁移（`image` 列，v1.1 新增）**：`CREATE TABLE IF NOT EXISTS` 对**已存在**的表是空操作，
+> 所以仓库里那个已有数据的 `db.sqlite3` 不会因为 SCHEMA 多了一列就自动获得它——之后任何
+> `SELECT *` 后按列名取值的地方都会 KeyError。因此 `init_db()` 在建表之后加了一步：
+> 用 `PRAGMA table_info(items)` 查一遍，缺 `image` 就 `ALTER TABLE items ADD COLUMN image TEXT`。
+> 新库由 SCHEMA 直接建好，这一步相当于空转。
+>
+> 两点约束：**加的列必须可空**（`ALTER TABLE` 无法给已有行补值），而且
+> **`ensure_database()` 必须在"库里已有数据就直接返回"那条分支之前调用 `init_db`**——
+> 否则老库永远不会被迁移。
 
 ### 4.2 字段来源与推导规则
 
@@ -209,6 +224,7 @@ CREATE INDEX IF NOT EXISTS idx_items_search ON items(search_order);
 | `published_at` | 直接抄录 | 服务端当前时间 |
 | `home_order` / `search_order` | 1~6 / 1~8 | `NULL`（排序时置顶） |
 | `source` | `'demo'` | `'user'` |
+| `image`（v1.1） | `NULL`（演示数据不带图） | 上传接口返回的文件名；不配图时为 `NULL` |
 | 物品编号 | 读取时生成，不落库 | 同左 |
 
 > **为什么需要 `source`**：7、8 两条演示数据**只出现在搜索页与详情页，不在首页**（这是现状），
@@ -381,6 +397,11 @@ Content-Type: application/json
 > 校验会先拦一道，真出现 422 说明有人在绕过前端直接调接口，那种报文给开发者看更合适。
 > 契约测试 `test_错误体形状是_code_message` 只断言 404 那一类，不要顺手把 422 也塞进去。
 
+> **v1.1 的 `image`**：这个字段是**前端提供**的（上传接口返回的文件名），**不属于上表的"服务端补全"**。
+> 服务端只校验两件事：形状（32 位十六进制 + 白名单扩展名，由 Pydantic 校验器挡 → 422），
+> 以及"文件确实存在于上传目录"（路由里查 → 400）。不传或传空表示这条信息没有配图，
+> 结果与"有图"的唯一差别就是返回的 `image` 是 `null`。
+
 ### 5.5 标记已解决
 
 ```
@@ -408,8 +429,36 @@ POST /api/items/{id}/resolve
 | 3 | GET | `/api/items/{id}` | — | 200 `DetailItem` | 404 |
 | 4 | POST | `/api/items` | 表单 JSON | 201 `DetailItem` | 422 / 400 |
 | 5 | POST | `/api/items/{id}/resolve` | — | 200 `DetailItem` | 404 |
+| 6 | POST | `/api/uploads` | `multipart/form-data`，字段 `file` | 201 `{filename, url}` | 400 / 422 |
+| 7 | GET | `/uploads/{filename}` | — | 200 图片字节 | 404 |
 
-**实现注意**：接口 1、2 的路径段是字面量 `home`、`search`，必须注册在接口 3 的 `/{id}` 之前，否则会被 `{id}` 捕获并因整型转换失败而返回 422。
+**实现注意**：接口 1、2 的路径段是字面量 `home`、`search`，必须注册在接口 3 的 `/{id}` 之前，否则会被 `{id}` 捕获并因整型转换失败而返回 422。接口 6、7 与它们不冲突——首段分别是 `uploads` 与 `api`，路径参数 `{id}` 只出现在 `/api/items/` 之下。
+
+### 5.8 图片上传与读取（v1.1）
+
+```
+POST /api/uploads        Content-Type: multipart/form-data，字段 file（一张图片）
+  201 → { "filename": "<32位十六进制>.<ext>", "url": "/uploads/<filename>" }
+  400 → { "code": "invalid_image", "message": "…" }   类型 / 空内容 / 超限 / 文件头不符
+  422 → 字段缺失（FastAPI 原生形状）
+
+GET  /uploads/{filename}
+  200 → 图片字节（Content-Type 按扩展名推断）
+  404 → { "code": "not_found", "message": "图片不存在" }
+```
+
+**为什么分两步**（先传图、再发布），而不是让 `POST /api/items` 直接吃 multipart：
+
+- `POST /api/items` 得以保持 JSON，**现有 30 条写路径测试只要多一个字段即可**；改成 multipart 要把签名换成 `Form`/`File`，Pydantic 的字段校验也得手工搬一遍。
+- 上传是"取得一个资源地址"，发布是"引用这个地址"——拆开后两者各自可测。
+
+**上传的校验顺序**（任一条不过就 400，且**不落盘**）：类型白名单 → 内容非空 → 大小上限 → **文件头魔数**。只信 `Content-Type` 等于让调用方自证合法——把任意文件标成 `image/png` 就混进来了。
+
+**为什么读取也做成接口，而不用 `StaticFiles` 挂载**：挂载会在**导入时**把目录固定下来，而数据库路径是**每请求**解析的；两者不一致，测试就没法各自指向临时目录。做成接口还能顺手校验文件名形状（`^[0-9a-f]{32}\.(jpg|png|webp)$`），**路径穿越因此不可能发生**——外部输入压根参与不了路径拼接。
+
+**目录解析**：与数据库同一套规则（显式入参 > 环境变量 `CLF_UPLOADS_DIR` > 默认位置），默认位置是开发时的仓库根、打包后是 exe 的同级目录。测试用环境变量把它指到临时目录，所以跑测试不会往仓库里写图片。
+
+**存储与体积**：服务端只做校验与落盘，**不解码、不压缩**（不引 Pillow）。压缩在浏览器完成——裁切后导出为 JPEG（质量 0.85、最长边 ≤ 1280），通常 100-300KB。
 
 **旧地址兼容**：
 
@@ -787,6 +836,10 @@ pip install -r requirements-dev.txt      # 含 pyinstaller
 （没有就建表并写入演示数据）→ 启动服务 → 用 **Google Chrome** 打开 `/index.html`。
 没装 Chrome 时退回系统默认浏览器，并在控制台说明用了哪个。
 
+**上传的图片不进包**：`uploads/` 与 `db.sqlite3` 一样是**运行时数据**，按同一套规则解析
+（开发时在仓库根、打包后在 exe 同级），首次上传时自动创建。把 exe 拷到别的机器时，
+数据库与图片都是各自在该机器上重新生成的。
+
 **exe 与后续代码改动的关系**——这是这个打包方式里最要紧的一点：
 
 | 改动 | 需要重新打包吗 | 说明 |
@@ -865,6 +918,27 @@ pip install -r requirements-dev.txt      # 含 pyinstaller
 | 29 | 发布一条新信息后回首页 | 新信息只有**一张**卡片（`insertLocalPost` 已删，不会与本机插入的卡片重复），且与其它卡片样式一致（边框色不再是 `border-blue-100`） |
 | 30 | 只保留一份主题文件 | 修改 `css/visual-theme.css` 里的一个 CSS 变量（如 `--accent`），5 个页面的配色**同时**变化 |
 
+### 12.4 物品图片（v1.1）
+
+自动化部分由 `tests/integration/test_upload.py`、`tests/unit/test_uploads.py` 覆盖；下面是**只能在浏览器里手工验**的部分。
+
+| # | 操作 | 预期 |
+| --- | --- | --- |
+| 31 | 发布页选一张图 | 图片按原比例**完整**显示（不裁不缩），初始已有一个最大居中的 4:3 框，框外压暗 |
+| 32 | 在框**外**拖动（鼠标与触摸都要试） | 从按下点重新框出一块；比例始终 4:3，框不会超出图片，页面**不跟着滚动** |
+| 33 | 在框**内**拖动 | 框整体平移，四边都不会跑出图片 |
+| 33a | 拖四个**角柄**（每个角都试） | 该角跟着指针走、**对角固定**（框不会整体漂移），比例始终 4:3；拖到图片边缘就停住，不会把框推出图片 |
+| 33b | 在图上轻轻点一下（不拖） | 不会把框缩成一个点——撤回到点之前那个框 |
+| 33c | 点「重新框选」 | 恢复成最大居中的 4:3 框 |
+| 33d | **按住不放拖出图片范围**，松手后再把光标移回图内（**不按键**） | 松手那一刻手势就该结束：移回去只是移动光标，**不会**继续拖动/缩放选择框。拖出范围的过程中框仍跟随但被夹在图片内（这是曾经的真 bug：没捕获指针时松手事件丢了，拖动态清不掉） |
+| 34 | **对比框选与详情页**（核心验收点） | 框里圈到的内容，与详情页展示的**完全一致**（同一个 4:3，没有二次裁切） |
+| 35 | 点「移除图片」后发布 | 正常发布，详情页不显示图片区 |
+| 36 | 选一张 6MB 的图 | 当场提示"图片不能超过 5MB"，且**不进入裁切视图** |
+| 37 | 选一个 .txt 文件 | 提示"仅支持 JPG / PNG / WebP 图片" |
+| 38 | 带图发布后打开详情页 | 「物品描述」下方显示图片，比例正常、不变形 |
+| 39 | 打开一条没有配图的信息（如 1 号） | 图片区**整块不显示**，描述与其它区块的间距正常 |
+| 40 | 手工删掉 `uploads/` 里的那个文件后刷新详情页 | 图片区隐藏，**不出现破图图标** |
+
 ## 13. 已知限制与后续规划
 
 | 限制 | 说明 |
@@ -872,7 +946,7 @@ pip install -r requirements-dev.txt      # 含 pyinstaller
 | 无发布者鉴权 | 任何访客都能把任意物品标记为已解决，且该变更现在是全局的。**这是现有行为的延续**（旧版同样没有归属校验），可作为后续迭代项。 |
 | 无用户体系 | 发布者昵称固定为"我（本机发布）"，无法区分真实发布者。 |
 | 无分页 | 数据量小时无需分页；数据增长后列表会变长。 |
-| 无图片 | 物品图标是固定的 Iconify 图标名，不支持上传实物照片。 |
+| 图片相关的限制（v1.1） | v1.1 起支持**一张**物品图片，但有几处已知边界：**上传接口无鉴权**（任何人都能写文件，只限制单张大小、没限制总量）；**上传成功但发布失败会留下孤儿图片**（两步接口没有跨步事务，后续可加清理任务）；**服务端不解码图片**，只按白名单与文件头校验；**不做 EXIF 旋转校正**，手机竖拍图可能侧躺；**列表卡片不显示图片**（仍用类型图标，避免改动卡片布局）。 |
 | 依赖外部 CDN | Tailwind 运行时与 Iconify 从 `modao.cc` 加载，离线不可用；后续可考虑本地化。 |
 | 主题依赖类名重映射 | 主题通过**覆盖 Tailwind 类名**实现配色，因此 HTML 里的类名与最终颜色不一致（写着 `bg-blue-600`，实际渲染为朱砂橙 `#e86143`）。改配色应改主题里的 CSS 变量，不要按类名的字面含义改，否则主题覆盖规则会失配。 |
 | 测试覆盖的边界 | 测试层（`tests/`）覆盖后端纯逻辑（`unit`）、5 个接口的端到端行为（`integration`）与前后端字段契约（`contract`）。**前端页面本身没有自动化测试**——业务逻辑已全部下沉到后端，前端只剩渲染，因此页面的视觉与交互由第 12 节的手工验收清单覆盖；这也是不引入 Node 构建/测试环境这一决策的代价，见《代码规范》第 3.4 节。 |

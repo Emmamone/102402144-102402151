@@ -12,6 +12,8 @@ from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
+from . import uploads
+
 TIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
 
 # 发布页的 7 个类别选项
@@ -69,6 +71,8 @@ class DetailItem(BaseModel):
     avatar: str
     masked: str
     contact: str
+    #: 上传的图片文件名；没有图时为 None（前端据此决定显示/隐藏图片区）
+    image: str | None = None
 
 
 class CreateRequest(BaseModel):
@@ -81,6 +85,8 @@ class CreateRequest(BaseModel):
     place: str
     desc: str
     contact: str
+    #: 上传接口返回的图片文件名；不配图时不传或传空。**选填**
+    image: str | None = None
 
     @field_validator("name", "place", "desc", "contact")
     @classmethod
@@ -108,6 +114,25 @@ class CreateRequest(BaseModel):
         text = (value or "").strip()
         if text not in CATEGORIES:
             raise ValueError("未知的类别")
+        return text
+
+    @field_validator("image")
+    @classmethod
+    def _known_image_filename(cls, value: str | None) -> str | None:
+        """校验图片文件名的**形状**（不查文件是否存在）。
+
+        参数：value —— 上传接口返回的文件名；空串或 None 表示不配图。
+        返回：去空格后的文件名，空一律归一成 None。
+        异常：形状不符（不是 32 位十六进制 + 白名单扩展名）时抛 ValueError → 422。
+
+        为什么只校验形状：校验器应当是纯函数——能单测、不碰文件系统。
+        "文件到底在不在"由路由去查，那是 I/O，而且失败该是 400 而不是 422。
+        """
+        text = (value or "").strip()
+        if not text:
+            return None
+        if not uploads.is_valid_filename(text):
+            raise ValueError("图片文件名不合法")
         return text
 
     @field_validator("time")

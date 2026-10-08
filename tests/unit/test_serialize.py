@@ -127,6 +127,7 @@ ROW = {
     "masked": "138****6621",
     "contact": "微信：zhang_cc2024",
     "keywords": "校园卡 证件卡片 蓝色卡套 图书馆 自习区 寻物 丢了",
+    "image": None,
 }
 
 

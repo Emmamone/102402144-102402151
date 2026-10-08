@@ -129,4 +129,5 @@ def row_to_detail_item(row: Mapping[str, Any]) -> dict:
         "avatar": row["avatar"],
         "masked": row["masked"],
         "contact": row["contact"],
+        "image": row["image"],
     }

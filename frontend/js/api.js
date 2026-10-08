@@ -92,6 +92,23 @@ var API = {
   },
 
   /**
+   * 上传一张图片。
+   *
+   * @param {Blob} blob 图片内容（发布页给的是裁切后的 JPEG）
+   * @param {string} [filename] 仅作为 multipart 里的文件名提示；**服务端不采信**，
+   *   它一律自己生成随机文件名
+   * @returns {Promise<{filename: string, url: string}>} filename 放进发布请求的 image 字段
+   *
+   * 已实现。约束：**不要设置 `Content-Type`** —— 交给浏览器为 FormData 生成
+   * 带 boundary 的 multipart header；手写死会让 boundary 对不上，服务端解析失败。
+   */
+  upload: function (blob, filename) {
+    var form = new FormData();
+    form.append('file', blob, filename || 'photo.jpg');
+    return apiRequest('/uploads', { method: 'POST', body: form });
+  },
+
+  /**
    * 把一条信息标记为已解决。
    *
    * @param {number|string} id 物品 id
